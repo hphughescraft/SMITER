@@ -1,0 +1,18 @@
+---
+title: "SMITER: An R Package for SMITE Calibration"
+output:
+  pkgdown::html_document2:
+    template: pkgdown/template/pkgdown.html
+---
+
+# SMITER: An R Package for SMITE Calibration
+
+This R package provides functions for SMITE Calibration, including the `SMITE.calib` function.
+
+## Installation
+
+To install the package, you can use the following R code:
+
+```r
+# devtools::install_github("hphughescraft/SMITER")
+install_local()
