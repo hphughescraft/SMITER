@@ -4,7 +4,7 @@
 #' @param A The 'forward' coral variable matrix (t x p; time in rows, coral parameters in columns).
 #' @param b The reconstruction target (t x 1).
 #' @param Ae A t x p matrix containing the errors for the forward matrix.
-#' @param be Error estimates for the reconstruction target. It can either be one value or of equal length to the reconstruction target (t x 1).
+#' @param be Error estimates for the reconstruction target. It can either be one value or a vector of equal length to the reconstruction target (t x 1).
 #' @param it The number of bootstrap Monte Carlo iterations (recommended at 10,000).
 #' @param noise Either 'white' or 'red', describing how the noise is propagated into the model.
 #' @param acc Autocorrelation Coefficient; if noise is specified as 'red', it describes the degree of autocorrelation in the error term.
@@ -15,7 +15,7 @@
 #' @return bhat - Predicted target anomalies
 #' @return recon - Predicted absolute target values
 #' @return e - Relevant error metrics. It enumerates (half) the distance of the 95-percent confidence interval (the average distance from the mean to the upper and lower bounds) for the singular values and the model parameters. It also enumerates the Standard Error of Prediction (SEP), Root-Mean-Square-Error (RMSE), and the correlation coefficient (r).
-
+#' @export
 
 SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, noise = "white", acc = NULL,
                          eigenclean = NULL, alpha = 0.05) {
