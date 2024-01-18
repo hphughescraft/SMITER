@@ -1,0 +1,92 @@
+\name{SMITE.calib}
+\alias{SMITE.calib}
+\title{SMITE Calibration}
+\description{Create a model (m) based on the 'forward' coral variable matrix (A) and the reconstruction target (b).}
+\usage{
+SMITE.calib(
+  A,
+  b,
+  Ae = NULL,
+  be = NULL,
+  it = 10000,
+  noise = "white",
+  acc = NULL,
+  eigenclean = NULL,
+  alpha = 0.05
+)
+}
+\arguments{
+\item{A}{The 'forward' coral variable matrix (t x p; time in rows, coral parameters in columns).}
+
+\item{b}{The reconstruction target (t x 1).}
+
+\item{Ae}{A t x p matrix containing the errors for the forward matrix.}
+
+\item{be}{Error estimates for the reconstruction target. It can either be one value or of equal length to the reconstruction target (t x 1).}
+
+\item{it}{The number of bootstrap Monte Carlo iterations (recommended at 10,000).}
+
+\item{noise}{Either 'white' or 'red', describing how the noise is propagated into the model.}
+
+\item{acc}{Autocorrelation Coefficient; if noise is specified as 'red', it describes the degree of autocorrelation in the error term.}
+
+\item{eigenclean}{Describes how (if at all) the singular values should be truncated to 'clean' the inverse solution. If the value is between 0 and 1, it will remove singular values based on the cumulative variance explained. If the value is greater than 1, it will return that many singular values (from the highest order).}
+
+\item{alpha}{The significance level for the confidence interval (i.e., 0.05 = 95-percent confidence).}
+}
+\value{
+S - Confidence intervals on the singular values of the forward matrix,
+
+m - SMITE model parameters, or loadings, for each column of the forward matrix.
+
+bhat - Predicted target anomalies
+
+recon - Predicted absolute target values
+
+e - Relevant error metrics. It enumerates (half) the distance of the 95-percent confidence interval (the average distance from the mean to the upper and lower bounds) for the singular values and the model parameters. It also enumerates the Standard Error of Prediction (SEP), Root-Mean-Square-Error (RMSE), and the correlation coefficient (r).
+}
+}
+\details{
+%%  ~~ If necessary, more details than the description above ~~
+}
+\value{
+%%  ~Describe the value returned
+%%  If it is a LIST, use
+%%  \item{comp1 }{Description of 'comp1'}
+%%  \item{comp2 }{Description of 'comp2'}
+%% ...
+}
+\references{
+%% ~put references to the literature/web site here ~
+}
+\author{
+%%  ~~who you are~~
+}
+\note{
+%%  ~~further notes~~
+}
+
+%% ~Make other sections like Warning with \section{Warning }{....} ~
+
+\seealso{
+%% ~~objects to See Also as \code{\link{help}}, ~~~
+}
+\examples{
+# Load data from Hughes et al. (in review)
+library(SMITER)
+data(BMDA_1B_Comp)
+data(BMDA_1B_EComp)
+
+# Designate forward matrix (A), reconstruction target (b), and corresponding errors (Ae, be).
+
+proxy_names <- names(bmda_1b_comp[,c(5:ncol(bmda_1b_comp))])
+
+A <- bmda_1b_comp[,proxy_names]
+Ae <- bmda_1b_ecomp[,proxy_names]
+b <- bmda_1b_comp[,'Temp']
+be <- rep(0.02, length(b))
+
+# Execute SMITE Calibration with no truncation (i.e., all information retained).
+
+result <- SMITE.calib(A = A, b = b, Ae = Ae, be = be, eigenclean = ncol(A))
+}
