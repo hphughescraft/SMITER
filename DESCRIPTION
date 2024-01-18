@@ -1,11 +1,22 @@
 Package: SMITER
 Type: Package
-Title: What the Package Does (Title Case)
+Title: Performs SMITE Method On Coral Geochemical Data
 Version: 0.1.0
-Author: Who wrote it
-Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
-License: What license is it under?
+Author: H.P. Hughes
+Maintainer: Hunter P. Hughes <hphughes@email.unc.edu>
+Description: Use the SMITE method to calibrate coral geochemical data to an environmental variable of interest. 
+License: GPL-3
 Encoding: UTF-8
 LazyData: true
+RoxygenNote: 7.2.3
+URL: https://hphughescraft.github.io/SMITER/
+Suggests: 
+    pkgdown
+VignetteBuilder: knitr
+Collate:
+    'data/BMDA_3B_Comp.RData'
+    'data/BMDA_3B_EComp.RData'
+    'data/BMDA_1B_Comp.RData'
+    'data/BMDA_1B_EComp.RData'
+    'R/scripts/hello.R'
+    'R/scripts/SMITE_calibration.R'
