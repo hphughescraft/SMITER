@@ -1,6 +1,6 @@
 Package: SMITER
 Type: Package
-Title: Performs SMITE Method On Coral Geochemical Data
+Title: Perform the SMITE Method (Hughes et al., in revision) On a Coral Geochemical Dataset
 Version: 0.1.0
 Author: H.P. Hughes
 Maintainer: Hunter P. Hughes <hphughes@email.unc.edu>
@@ -19,4 +19,5 @@ Collate:
     'data/BMDA_1B_Comp.RData'
     'data/BMDA_1B_EComp.RData'
     'R/scripts/hello.R'
-    'R/scripts/SMITE_calibration.R'
+    'R/scripts/SMITEcalibration.R'
+    'R/scripts/SMITEreconstruction.R'

@@ -10,7 +10,7 @@
 #' @return bhat - Predicted reconstruction target values. The SEP from the SMITE.calib() function can be used to estimate minimum errors (e.g., not associated with age model error).
 #' @export
 
-tSMITE_recon <- function(A, m, Amu, Asd, bmu, bsd) {
+SMITE.recon <- function(A, m, Amu, Asd, bmu, bsd) {
 
   # =============================== #
   # Formatting
