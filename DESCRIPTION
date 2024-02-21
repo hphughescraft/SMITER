@@ -18,6 +18,5 @@ Collate:
     'data/BMDA_3B_EComp.RData'
     'data/BMDA_1B_Comp.RData'
     'data/BMDA_1B_EComp.RData'
-    'R/scripts/hello.R'
-    'R/scripts/SMITEcalibration.R'
-    'R/scripts/SMITEreconstruction.R'
+    'R/SMITEcalibration.R'
+    'R/SMITEreconstruction.R'
