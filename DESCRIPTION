@@ -14,9 +14,5 @@ Suggests:
     pkgdown
 VignetteBuilder: knitr
 Collate:
-    'data/BMDA_3B_Comp.RData'
-    'data/BMDA_3B_EComp.RData'
-    'data/BMDA_1B_Comp.RData'
-    'data/BMDA_1B_EComp.RData'
-    'R/SMITEcalibration.R'
-    'R/SMITEreconstruction.R'
+    'SMITEcalibration.R'
+    'SMITEreconstruction.R'
