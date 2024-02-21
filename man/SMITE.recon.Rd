@@ -64,8 +64,7 @@ bhat <- SMITE.recon(
   bsd = sd(b)
 )
 
-result$recon
-bhat
+cbind(bhat, result$recon$bhat.mu)
 
 }
 
