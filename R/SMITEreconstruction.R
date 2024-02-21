@@ -59,7 +59,7 @@ SMITE.recon <- function(A, m, Amu, Asd, bmu, bsd) {
   # =============================== #
 
   bnorm <- Anorm %*% m
-  bhat <- (bnorm * bsd) + bsd
+  bhat <- (bnorm * bsd) + bmu
 
   return(bhat)
 }
