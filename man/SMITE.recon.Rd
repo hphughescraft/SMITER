@@ -54,7 +54,7 @@ result <- SMITE.calib(A = A, b = b, Ae = Ae, be = be, eigenclean = ncol(A))
 # Extract SMITE model parameters #
 m <- result$m$m.mu
 
-# Reconstruction (should be nearly to result$recon$bhat.mu, only minor differences due to bootstrapping)
+# Reconstruction (should be nearly identical to result$recon$bhat.mu, only minor differences due to bootstrapping)
 bhat <- SMITE.recon(
   A = A,
   m = m,
