@@ -45,33 +45,15 @@ recon - Predicted absolute target values
 
 e - Relevant error metrics. It enumerates (half) the distance of the 95-percent confidence interval (the average distance from the mean to the upper and lower bounds) for the singular values and the model parameters. It also enumerates the Standard Error of Prediction (SEP), Root-Mean-Square-Error (RMSE), and the correlation coefficient (r).
 }
-\details{
-%%  ~~ If necessary, more details than the description above ~~
-}
-\value{
-%%  ~Describe the value returned
-%%  If it is a LIST, use
-%%  \item{comp1 }{Description of 'comp1'}
-%%  \item{comp2 }{Description of 'comp2'}
-%% ...
-}
+
 \references{
-%% ~put references to the literature/web site here ~
-}
-\author{
-%%  ~~who you are~~
-}
-\note{
-%%  ~~further notes~~
+Hughes, H. P., Thompson, D. M., Foster, G. L., Lees, J., Surge, D. (in revision). “Synthetic and Practical Reconstructions of SST and pH Using the Novel Multiproxy SMITE Method.” PLOS ONE.
 }
 
-%% ~Make other sections like Warning with \section{Warning }{....} ~
+\author{Hunter P. Hughes}
 
-\seealso{
-%% ~~objects to See Also as \code{\link{help}}, ~~~
-}
 \examples{
-# Load data from Hughes et al. (in review)
+# Load data from Hughes et al. (in revision)
 library(SMITER)
 data(BMDA_1B_Comp)
 data(BMDA_1B_EComp)
