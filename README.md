@@ -12,10 +12,10 @@ The goal of SMITER is to allow for easy access of the SMITE Method, a
 multivariate method for reconstructing sea surface temperature (SST) and
 seawater pH using coral skeletal geochemistry. You can find more details
 about the SMITE method in the forthcoming paper (Hughes et al., in
-revisions). In a sentence, SMITE leverages the covariance of multiple
-coral geochemical signals (e.g., Sr/Ca, Li/Mg) to optimize
-reconstruction skill. While SMITE is ready for widespread dissemination,
-it is also in active development. See guidelines below for contributing.
+press). In a sentence, SMITE leverages the covariance of multiple coral
+geochemical signals (e.g., Sr/Ca, Li/Mg) to optimize reconstruction
+skill. While SMITE is ready for widespread dissemination, it is also in
+active development. See guidelines below for contributing.
 
 ## Installation
 
@@ -38,8 +38,8 @@ A typical workflow will go as follows.
 ### Calibration
 
 First, you want to call the SMITER package and load your data into R.
-The SMITER package comes with sample data from Hughes et al. (in
-revisions) for you to work with.
+The SMITER package comes with sample data from Hughes et al. (in press)
+for you to work with.
 
 ``` r
 # Call the SMITER package
@@ -174,7 +174,7 @@ Thank you for your understanding and support!
 
 I would like all of those who have contributed to improving the SMITE
 method thus far, particularly my coauthors for the SMITE methods paper
-(Hughes et al., in revisions). A huge thanks goes to the
+(Hughes et al., in press). A huge thanks goes to the
 [pkgdown](https://pkgdown.r-lib.org/) package in R for making this
 method so easy to disseminate. A special thanks goes Matt Jansen for
 advising me in the subtleties of website design.
