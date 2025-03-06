@@ -47,7 +47,7 @@ recon - Predicted absolute target values
 
 e - Relevant error metrics. It enumerates the Standard Error of Prediction (SEP), Root-Mean-Square-Error (RMSE), and the correlation coefficient (r).
 
-e - Relevant error metrics for the cross-validated data points specifically.
+e.xval - Relevant error metrics for the cross-validated data points specifically.
 }
 \description{
 Create a model (x) based on the 'forward' coral variable matrix (A) and the reconstruction target (b).
