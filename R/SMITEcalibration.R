@@ -15,7 +15,7 @@
 #' @return bhat - Predicted target anomalies
 #' @return recon - Predicted absolute target values
 #' @return e - Relevant error metrics. It enumerates the Standard Error of Prediction (SEP), Root-Mean-Square-Error (RMSE), and the correlation coefficient (r).
-#' @return e - Relevant error metrics for the cross-validated data points specifically.
+#' @return e.xval - Relevant error metrics for the cross-validated data points specifically.
 #' @export
 #' @examples
 #' # Load data from Hughes et al. (in revision)
