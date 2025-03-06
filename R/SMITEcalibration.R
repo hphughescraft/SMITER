@@ -86,7 +86,7 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, noise = "white",
   # =============================== #
   # Begin bootstrap
   # =============================== #
-  k.list <- list()
+  k_list <- list()
 
   for(k in 1:it) {
 
@@ -133,6 +133,9 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, noise = "white",
       bp[i] <- rnorm(n = 1, mean = b[i], sd = be[i])
     }
 
+    Ap_norm <- apply(Ap, MARGIN = 2, FUN = function(x) (x - mean(x)) /  sd(x))
+    bp_norm <- (bp - mean(bp)) / sd(bp)
+
     # =============================== #
     # Cross-validation
     # =============================== #
@@ -142,18 +145,19 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, noise = "white",
 
     # Store indexed rows
     rr <- si:(si + xval - 1)
+    Apv <- Ap_norm[rr,]
+    bpv <- bp_norm[rr,]
 
     # Remove indexed rows
-    Apx <- Ap[-(rr),]
-    bpx <- bp[-(rr),]
+    Apx <- Ap_norm[-(rr),]
+    bpx <- bp_norm[-(rr),]
+
+
 
     # =============================== #
     # SVD of Ap
     # =============================== #
-    Ap.norm <- apply(Apx, MARGIN = 2, FUN = function(x) (x - mean(x)) /  sd(x))
-    bp.norm <- (bpx - mean(bpx)) / sd(bpx)
-
-    G <- svd(Ap.norm)
+    G <- svd(Apx)
 
     U <- G$u
     V <- G$v
@@ -182,11 +186,11 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, noise = "white",
     # Moore-Penrose Pseudoinverse
     # =============================== #
 
-    x <- V %*% diag(1/S) %*% t(U) %*% bp.norm
-    bhat <- Ap.norm %*% x
+    x <- V %*% diag(1/S) %*% t(U) %*% bpx
+    bhat <- Apx %*% x
 
     # =============================== #
-    # Store S, m, & bhat
+    # Store S, m, & bhat, & residuals
     # =============================== #
 
     # Place removed rows back into dhat
@@ -202,10 +206,15 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, noise = "white",
                 bhat[si:length(bhat)])
     }
 
-    k.list[[k]] <- list(
+    res <- bhat - bp_norm
+    res_xval <- (Apv %*% x) - bpv
+
+    k_list[[k]] <- list(
       "S" = S,
       "x" = x,
-      "bhat" = bhat
+      "bhat" = bhat,
+      "res" = res,
+      "res_xval" = res_xval
     )
   } # End Ap Allocation Bootstrap
 
@@ -213,14 +222,18 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, noise = "white",
   # Extract distributions
   # =============================== #
 
-  S.mat <- matrix(NA, nrow = length(S), ncol = it)
-  x.mat <- matrix(NA, nrow = nrow(x), ncol = it)
-  bhat.mat <- matrix(NA, nrow = length(bhat), ncol = it)
+  S_mat <- matrix(NA, nrow = length(S), ncol = it)
+  x_mat <- matrix(NA, nrow = nrow(x), ncol = it)
+  bhat_mat <- matrix(NA, nrow = length(bhat), ncol = it)
+  res_mat <- matrix(NA, nrow = length(res), ncol = it)
+  res_xval_mat <- matrix(NA, nrow = length(res_xval), ncol = it)
 
   for(i in 1:it) {
-    S.mat[,i] <- k.list[[i]]$S
-    x.mat[,i] <- k.list[[i]]$x
-    bhat.mat[,i] <- k.list[[i]]$bhat
+    S_mat[,i] <- k_list[[i]]$S
+    x_mat[,i] <- k_list[[i]]$x
+    bhat_mat[,i] <- k_list[[i]]$bhat
+    res_mat[,i] <- k_list[[i]]$res
+    res_xval_mat[,i] <- k_list[[i]]$res_xval
   }
 
   # ======================================= #
@@ -231,81 +244,131 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, noise = "white",
     stop("Please define the significance level 'alpha'.")
   }
 
-  alpha.symm <- alpha / 2
-  cint.index <- seq(floor(alpha.symm * it), floor((1 - alpha.symm) * it), 1)
+  alpha_symm <- alpha / 2
+  cint_index <- seq(floor(alpha_symm * it), floor((1 - alpha_symm) * it), 1)
 
   # ====== #
   # S
   # ====== #
-  S.mu <- apply(S.mat, 1, function(x) mean(x))
-  S.sd <- apply(S.mat, 1, function(x) sd(x))
-  S.cint <- apply(S.mat, 1, function(x) x[order(x)][cint.index])
-  S.low <- S.cint[1,]
-  S.high <- S.cint[nrow(S.cint),]
+  S_mu <- apply(S_mat, 1, function(x) mean(x))
+  S_sd <- apply(S_mat, 1, function(x) sd(x))
+  S_cint <- apply(S_mat, 1, function(x) x[order(x)][cint_index])
+  S_low <- S_cint[1,]
+  S_high <- S_cint[nrow(S_cint),]
 
-  S.df <- data.frame(
-    "S.low" = S.low,
-    "S.mu" = S.mu,
-    "S.high" = S.high
+  S_df <- data.frame(
+    "S.low" = S_low,
+    "S.mu" = S_mu,
+    "S.high" = S_high
   )
 
   # ====== #
   # x
   # ====== #
-  x.mu <- apply(x.mat, 1, function(f) mean(f))
-  x.sd <- apply(x.mat, 1, function(f) sd(f))
-  x.cint <- apply(x.mat, 1, function(f) f[order(f)][cint.index])
-  x.low <- x.cint[1,]
-  x.high <- x.cint[nrow(x.cint),]
+  x_mu <- apply(x_mat, 1, function(f) mean(f))
+  x_sd <- apply(x_mat, 1, function(f) sd(f))
+  x_cint <- apply(x_mat, 1, function(f) f[order(f)][cint_index])
+  x_low <- x_cint[1,]
+  x_high <- x_cint[nrow(x_cint),]
 
-  x.df <- data.frame(
-    "x.low" = x.low,
-    "x.mu" = x.mu,
-    "x.high" = x.high
+  x_df <- data.frame(
+    "x.low" = x_low,
+    "x.mu" = x_mu,
+    "x.high" = x_high
   )
 
-  rownames(x.df) <- colnames(A)
+  rownames(x_df) <- colnames(A)
 
-  # ====== #
-  # bhat
-  # ====== #
-  bhat.mu <- apply(bhat.mat, 1, function(f) mean(f, na.rm = TRUE))
-  bhat.sd <- apply(bhat.mat, 1, function(f) sd(f, na.rm = TRUE))
-  bhat.cint <- apply(bhat.mat, 1, function(f) f[order(f)][cint.index])
-  bhat.low <- bhat.high <- rep(NA, length(bhat.mu))
+  # ============ #
+  # bhat & recon
+  # ============ #
+  bhat_mu <- apply(bhat_mat, 1, function(f) mean(f, na.rm = TRUE))
+  bhat_sd <- apply(bhat_mat, 1, function(f) sd(f, na.rm = TRUE))
+  bhat_cint <- apply(bhat_mat, 1, function(f) f[order(f)][cint_index])
+  bhat_low <- bhat_high <- rep(NA, length(bhat_mu))
 
-  for(i in 1:ncol(bhat.cint)) {
-    m <- na.omit(bhat.cint[,i])
-    n <- m[ceiling(alpha.symm * length(m)):ceiling((1 - alpha.symm) * length(m))]
+  for(i in 1:ncol(bhat_cint)) {
+    m <- na.omit(bhat_cint[,i])
+    n <- m[ceiling(alpha_symm * length(m)):ceiling((1 - alpha_symm) * length(m))]
 
-    bhat.low[i] <- min(n)
-    bhat.high[i] <- max(n)
+    bhat_low[i] <- min(n)
+    bhat_high[i] <- max(n)
   }
 
-  bhat.df <- data.frame(
-    "bhat.low" = bhat.low,
-    "bhat.mu" = bhat.mu,
-    "bhat.high" = bhat.high
+  bhat_df <- data.frame(
+    "bhat.low" = bhat_low,
+    "bhat.mu" = bhat_mu,
+    "bhat.high" = bhat_high
   )
 
-  recon.df <- (bhat.df * sd(b)) + mean(b)
+  recon_df <- (bhat_df * sd(b)) + mean(b)
+
+  # ============ #
+  # Residuals
+  # ============ #
+  res_mu <- apply(res_mat, 1, function(f) mean(f, na.rm = TRUE))
+  res_sd <- apply(res_mat, 1, function(f) sd(f, na.rm = TRUE))
+  res_cint <- apply(res_mat, 1, function(f) f[order(f)][cint_index])
+  res_low <- res_high <- rep(NA, length(res_mu))
+
+  for(i in 1:ncol(res_cint)) {
+    m <- na.omit(res_cint[,i])
+    n <- m[ceiling(alpha_symm * length(m)):ceiling((1 - alpha_symm) * length(m))]
+
+    res_low[i] <- min(n)
+    res_high[i] <- max(n)
+  }
+
+  res_df <- data.frame(
+    "res.low" = res_low * sd(b),
+    "res.mu" = res_mu * sd(b),
+    "res.high" = res_high * sd(b)
+  )
+
+  # Cross-validated
+
+  res_xval_mu <- apply(res_xval_mat, 1, function(f) mean(f, na.rm = TRUE))
+  res_xval_sd <- apply(res_xval_mat, 1, function(f) sd(f, na.rm = TRUE))
+  res_xval_cint <- apply(res_xval_mat, 1, function(f) f[order(f)][cint_index])
+  res_xval_low <- res_xval_high <- rep(NA, length(res_xval_mu))
+
+  for(i in 1:ncol(res_xval_cint)) {
+    m <- na.omit(res_xval_cint[,i])
+    n <- m[ceiling(alpha_symm * length(m)):ceiling((1 - alpha_symm) * length(m))]
+
+    res_xval_low[i] <- min(n)
+    res_xval_high[i] <- max(n)
+  }
+
+  res_xval_df <- data.frame(
+    "res.low" = res_xval_low * sd(b),
+    "res.mu" = res_xval_mu * sd(b),
+    "res.high" = res_xval_high * sd(b)
+  )
+
   # =============================== @
   # RETURN
   # =============================== @
 
-  SMITE.list <- list(
-    "S" = S.df,
-    "x" = x.df,
-    "bhat" = bhat.df,
-    "recon" = recon.df,
+  SMITE_list <- list(
+    "S" = S_df,
+    "x" = x_df,
+    "bhat" = bhat_df,
+    "recon" = recon_df,
     "e" = c(
-      "bhat" = mean(c(bhat.df$bhat.high - bhat.df$bhat.mu, bhat.df$bhat.mu - bhat.df$bhat.low)) / 1.96,
-      "SEP" = (mean(c(bhat.df$bhat.high - bhat.df$bhat.mu, bhat.df$bhat.mu - bhat.df$bhat.low)) / 1.96) * sd(b),
-      "RMSE" = (sum(sqrt((b - recon.df$bhat.mu)^2))) / (nrow(recon.df) - 2),
-      "r" = cor.test(b, bhat.df$bhat.mu)$estimate
+      "SEP" = (mean(c(bhat_df$bhat.high - bhat_df$bhat.mu,
+                      bhat_df$bhat.mu - bhat_df$bhat.low)) / 1.96) * sd(b),
+      "RMSE" = (sum(sqrt((b - recon_df$bhat.mu)^2))) / (nrow(recon_df)),
+      "r" = cor.test(b, bhat_df$bhat.mu)$estimate
+    ),
+    "e.xval" = c(
+      "SEP" = (mean(c((b - res_df$res.mu) - (b - res_df$res.high),
+                      (b - res_df$res.low) - (b - res_df$res.mu))) / 1.96),
+      "RMSE" = mean(abs(res_df$res.mu)),
+      "r" = cor.test(b, (b - res_df$res.mu))$estimate
     )
   )
 
-  return(SMITE.list)
+  return(SMITE_list)
 
 }
