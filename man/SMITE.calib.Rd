@@ -45,7 +45,9 @@ bhat - Predicted target anomalies
 
 recon - Predicted absolute target values
 
-e - Relevant error metrics. It enumerates (half) the distance of the 95-percent confidence interval (the average distance from the mean to the upper and lower bounds) for the singular values and the model parameters. It also enumerates the Standard Error of Prediction (SEP), Root-Mean-Square-Error (RMSE), and the correlation coefficient (r).
+e - Relevant error metrics. It enumerates the Standard Error of Prediction (SEP), Root-Mean-Square-Error (RMSE), and the correlation coefficient (r).
+
+e - Relevant error metrics for the cross-validated data points specifically.
 }
 \description{
 Create a model (x) based on the 'forward' coral variable matrix (A) and the reconstruction target (b).
