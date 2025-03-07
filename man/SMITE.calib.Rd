@@ -45,6 +45,10 @@ bhat - Predicted target anomalies
 
 recon - Predicted absolute target values
 
+residuals - Residuals from the calibration (bhat - b)
+
+residuals.xval - Only cross-validated residuals from the calibration
+
 e - Relevant error metrics. It enumerates the Standard Error of Prediction (SEP), Root-Mean-Square-Error (RMSE), and the correlation coefficient (r).
 
 e.xval - Relevant error metrics for the cross-validated data points specifically.

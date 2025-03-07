@@ -14,6 +14,8 @@
 #' @return x - SMITE model parameters, or loadings, for each column of the forward matrix.
 #' @return bhat - Predicted target anomalies
 #' @return recon - Predicted absolute target values
+#' @return residuals - Residuals from the calibration (bhat - b)
+#' @return residuals.xval - Only cross-validated residuals from the calibration
 #' @return e - Relevant error metrics. It enumerates the Standard Error of Prediction (SEP), Root-Mean-Square-Error (RMSE), and the correlation coefficient (r).
 #' @return e.xval - Relevant error metrics for the cross-validated data points specifically.
 #' @export
@@ -302,6 +304,8 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, noise = "white",
     "x" = x_df,
     "bhat" = bhat_df,
     "recon" = recon_df,
+    "residuals" = res_df,
+    "residuals.xval" = res_xval_df,
     "e" = c(
       "SEP" = (mean(c(bhat_df$bhat.high - bhat_df$bhat.mu,
                       bhat_df$bhat.mu - bhat_df$bhat.low)) / 1.96) * sd(b),
