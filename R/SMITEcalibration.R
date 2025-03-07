@@ -249,7 +249,6 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, noise = "white",
 
   alpha_symm <- alpha / 2
 
-
   # ====== #
   # S
   # ====== #
