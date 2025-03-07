@@ -207,15 +207,16 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, noise = "white",
                 bhat[si:length(bhat)])
     }
 
-    res <- bhat - bp_norm
-    res_xval <- (Apv %*% x) - bpv
+    res <- (bhat - bp_norm) * sd(b)
+    res_xval <- ((Apv %*% x) - bpv) * sd(b)
 
     k_list[[k]] <- list(
       "S" = S,
       "x" = x,
       "bhat" = bhat,
       "res" = res,
-      "res_xval" = res_xval
+      "res_xval" = res_xval,
+      "id_xval" = rr
     )
   } # End Ap Allocation Bootstrap
 
@@ -226,15 +227,14 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, noise = "white",
   S_mat <- matrix(NA, nrow = length(S), ncol = it)
   x_mat <- matrix(NA, nrow = nrow(x), ncol = it)
   bhat_mat <- matrix(NA, nrow = length(bhat), ncol = it)
-  res_mat <- matrix(NA, nrow = length(res), ncol = it)
-  res_xval_mat <- matrix(NA, nrow = length(res_xval), ncol = it)
+  res_mat <- res_xval_mat <- matrix(NA, nrow = length(res), ncol = it)
 
   for(i in 1:it) {
     S_mat[,i] <- k_list[[i]]$S
     x_mat[,i] <- k_list[[i]]$x
     bhat_mat[,i] <- k_list[[i]]$bhat
     res_mat[,i] <- k_list[[i]]$res
-    res_xval_mat[,i] <- k_list[[i]]$res_xval
+    res_xval_mat[k_list[[i]]$id_xval,i] <- k_list[[i]]$res_xval
   }
 
   # ======================================= #
@@ -245,107 +245,53 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, noise = "white",
     stop("Please define the significance level 'alpha'.")
   }
 
-  alpha_symm <- alpha / 2
-  cint_index <- seq(floor(alpha_symm * it), floor((1 - alpha_symm) * it), 1)
 
   # ====== #
   # S
   # ====== #
-  S_mu <- apply(S_mat, 1, function(x) mean(x))
-  S_sd <- apply(S_mat, 1, function(x) sd(x))
-  S_cint <- apply(S_mat, 1, function(x) x[order(x)][cint_index])
-  S_low <- S_cint[1,]
-  S_high <- S_cint[nrow(S_cint),]
-
-  S_df <- data.frame(
-    "S.low" = S_low,
-    "S.mu" = S_mu,
-    "S.high" = S_high
+  S_df <- as.data.frame(
+    t(apply(S_mat, 1, function(x) quantile(na.omit(x), probs = c(alpha_symm, 0.500, 1 - alpha_symm))))
   )
+
+  names(S_df) <- c("S.low", "S.mu", "S.high")
 
   # ====== #
   # x
   # ====== #
-  x_mu <- apply(x_mat, 1, function(f) mean(f))
-  x_sd <- apply(x_mat, 1, function(f) sd(f))
-  x_cint <- apply(x_mat, 1, function(f) f[order(f)][cint_index])
-  x_low <- x_cint[1,]
-  x_high <- x_cint[nrow(x_cint),]
-
-  x_df <- data.frame(
-    "x.low" = x_low,
-    "x.mu" = x_mu,
-    "x.high" = x_high
+  x_df <- as.data.frame(
+    t(apply(x_mat, 1, function(x) quantile(na.omit(x), probs = c(alpha_symm, 0.500, 1 - alpha_symm))))
   )
+
+  names(x_df) <- c("x.low", "x.mu", "x.high")
 
   rownames(x_df) <- colnames(A)
 
   # ============ #
   # bhat & recon
   # ============ #
-  bhat_mu <- apply(bhat_mat, 1, function(f) mean(f, na.rm = TRUE))
-  bhat_sd <- apply(bhat_mat, 1, function(f) sd(f, na.rm = TRUE))
-  bhat_cint <- apply(bhat_mat, 1, function(f) f[order(f)][cint_index])
-  bhat_low <- bhat_high <- rep(NA, length(bhat_mu))
-
-  for(i in 1:ncol(bhat_cint)) {
-    m <- na.omit(bhat_cint[,i])
-    n <- m[ceiling(alpha_symm * length(m)):ceiling((1 - alpha_symm) * length(m))]
-
-    bhat_low[i] <- min(n)
-    bhat_high[i] <- max(n)
-  }
-
-  bhat_df <- data.frame(
-    "bhat.low" = bhat_low,
-    "bhat.mu" = bhat_mu,
-    "bhat.high" = bhat_high
+  bhat_df <- as.data.frame(
+    t(apply(bhat_mat, 1, function(x) quantile(na.omit(x), probs = c(alpha_symm, 0.500, 1 - alpha_symm))))
   )
+
+  names(bhat_df) <- c("bhat.low", "bhat.mu", "bhat.high")
 
   recon_df <- (bhat_df * sd(b)) + mean(b)
 
   # ============ #
-  # Residuals
+  # residuals
   # ============ #
-  res_mu <- apply(res_mat, 1, function(f) mean(f, na.rm = TRUE))
-  res_sd <- apply(res_mat, 1, function(f) sd(f, na.rm = TRUE))
-  res_cint <- apply(res_mat, 1, function(f) f[order(f)][cint_index])
-  res_low <- res_high <- rep(NA, length(res_mu))
-
-  for(i in 1:ncol(res_cint)) {
-    m <- na.omit(res_cint[,i])
-    n <- m[ceiling(alpha_symm * length(m)):ceiling((1 - alpha_symm) * length(m))]
-
-    res_low[i] <- min(n)
-    res_high[i] <- max(n)
-  }
-
-  res_df <- data.frame(
-    "res.low" = res_low * sd(b),
-    "res.mu" = res_mu * sd(b),
-    "res.high" = res_high * sd(b)
+  res_df <- as.data.frame(
+    t(apply(res_mat, 1, function(x) quantile(na.omit(x), probs = c(alpha_symm, 0.500, 1 - alpha_symm))))
   )
+
+  names(res_df) <- c("res.low", "res.mu", "res.high")
 
   # Cross-validated
-
-  res_xval_mu <- apply(res_xval_mat, 1, function(f) mean(f, na.rm = TRUE))
-  res_xval_sd <- apply(res_xval_mat, 1, function(f) sd(f, na.rm = TRUE))
-  res_xval_cint <- apply(res_xval_mat, 1, function(f) f[order(f)][cint_index])
-  res_xval_low <- res_xval_high <- rep(NA, length(res_xval_mu))
-
-  for(i in 1:ncol(res_xval_cint)) {
-    m <- na.omit(res_xval_cint[,i])
-    n <- m[ceiling(alpha_symm * length(m)):ceiling((1 - alpha_symm) * length(m))]
-
-    res_xval_low[i] <- min(n)
-    res_xval_high[i] <- max(n)
-  }
-
-  res_xval_df <- data.frame(
-    "res.low" = res_xval_low * sd(b),
-    "res.mu" = res_xval_mu * sd(b),
-    "res.high" = res_xval_high * sd(b)
+  res_xval_df <- as.data.frame(
+    t(apply(res_xval_mat, 1, function(x) quantile(na.omit(x), probs = c(alpha_symm, 0.500, 1 - alpha_symm))))
   )
+
+  names(res_xval_df) <- c("res.low", "res.mu", "res.high")
 
   # =============================== @
   # RETURN
@@ -363,13 +309,14 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, noise = "white",
       "r" = cor.test(b, bhat_df$bhat.mu)$estimate
     ),
     "e.xval" = c(
-      "SEP" = (mean(c((b - res_df$res.mu) - (b - res_df$res.high),
-                      (b - res_df$res.low) - (b - res_df$res.mu))) / 1.96),
-      "RMSE" = mean(abs(res_df$res.mu)),
-      "r" = cor.test(b, (b - res_df$res.mu))$estimate
+      "SEP" = (mean(c((b - res_xval_df$res.mu) - (b - res_xval_df$res.high),
+                      (b - res_xval_df$res.low) - (b - res_xval_df$res.mu))) / 1.96),
+      "RMSE" = mean(abs(res_xval_df$res.mu)),
+      "r" = cor.test(b, (b - res_xval_df$res.mu))$estimate
     )
   )
 
   return(SMITE_list)
 
 }
+
