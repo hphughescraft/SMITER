@@ -247,6 +247,8 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, noise = "white",
     stop("Please define the significance level 'alpha'.")
   }
 
+  alpha_symm <- alpha / 2
+
 
   # ====== #
   # S
