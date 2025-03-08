@@ -314,10 +314,10 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, noise = "white",
       "r" = cor.test(b, bhat_df$bhat.mu)$estimate
     ),
     "e.xval" = c(
-      "SEP" = (mean(c((b - res_xval_df$res.mu) - (b - res_xval_df$res.high),
-                      (b - res_xval_df$res.low) - (b - res_xval_df$res.mu))) / 1.96),
+      "SEP" = (mean(c(res_xval_df$res.high - res_xval_df$res.mu,
+                      res_xval_df$res.mu - res_xval_df$res.low)) / 1.96),
       "RMSE" = mean(abs(res_xval_df$res.mu)),
-      "r" = cor.test(b, (b - res_xval_df$res.mu))$estimate
+      "r" = cor.test(b, (b + res_xval_df$res.mu))$estimate
     )
   )
 
