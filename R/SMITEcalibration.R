@@ -308,8 +308,8 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, noise = "white",
     "residuals" = res_df,
     "residuals.xval" = res_xval_df,
     "e" = c(
-      "SEP" = (mean(c(bhat_df$bhat.high - bhat_df$bhat.mu,
-                      bhat_df$bhat.mu - bhat_df$bhat.low)) / 1.96) * sd(b),
+      "SEP" = (mean(c(res_df$res.high - res_df$res.mu,
+                      res_df$res.mu - res_df$res.low)) / 1.96),
       "RMSE" = (sum(sqrt((b - recon_df$bhat.mu)^2))) / (nrow(recon_df)),
       "r" = cor.test(b, bhat_df$bhat.mu)$estimate
     ),
