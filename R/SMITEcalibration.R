@@ -18,6 +18,7 @@
 #' @return residuals.xval - Only cross-validated residuals from the calibration
 #' @return e - Relevant error metrics. It enumerates the Standard Error of Prediction (SEP), Root-Mean-Square-Error (RMSE), and the correlation coefficient (r).
 #' @return e.xval - Relevant error metrics for the cross-validated data points specifically.
+#' @return e.stats - alpha-confidence intervals for R and RMSE (non-cross-validated and cross-validated)
 #' @export
 #' @examples
 #' # Load data from Hughes et al. (in revision)
@@ -191,26 +192,35 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, noise = "white",
 
     x <- V %*% diag(1/S) %*% t(U) %*% bpx
     bhat <- Apx %*% x
+    bhat_xval <- Apv %*% x
 
     # =============================== #
     # Store S, m, & bhat, & residuals
     # =============================== #
 
-    # Place removed rows back into dhat
-    if(si == 1) { # Prevents over-allocating from the beginning
-      bhat <- c(rep(NA, xval),
-                bhat[si:length(bhat)])
-    } else if(si > length(bhat)){ # Prevents over-allocating from the end
-      bhat <- c(bhat[1:(si - 1)],
-                rep(NA, xval))
-    } else { # Original splice code
-      bhat <- c(bhat[1:(si - 1)],
-                rep(NA, xval),
-                bhat[si:length(bhat)])
-    }
+    # # Place removed rows back into dhat
+    # if(si == 1) { # Prevents over-allocating from the beginning
+    #   bhat <- c(rep(NA, xval),
+    #             bhat[si:length(bhat)])
+    # } else if(si > length(bhat)){ # Prevents over-allocating from the end
+    #   bhat <- c(bhat[1:(si - 1)],
+    #             rep(NA, xval))
+    # } else { # Original splice code
+    #   bhat <- c(bhat[1:(si - 1)],
+    #             rep(NA, xval),
+    #             bhat[si:length(bhat)])
+    # }
 
-    res <- (bhat - bp_norm) * sd(b)
-    res_xval <- ((Apv %*% x) - bpv) * sd(b)
+    # Residuals
+    res <- (bhat - bpx) * sd(b)
+    res_xval <- (bhat_xval - bpv) * sd(b)
+
+    # Statistics
+    r <- cor.test(bhat, bpx)$estimate
+    rmse <- sum(sqrt((bpx - bhat)^2)) / length(bhat)
+
+    r_xval <- cor.test(bpv, bhat_xval)$estimate
+    rmse_xval <- sum(sqrt((bpv - bhat_xval)^2)) / length(bhat_xval)
 
     k_list[[k]] <- list(
       "S" = S,
@@ -218,7 +228,11 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, noise = "white",
       "bhat" = bhat,
       "res" = res,
       "res_xval" = res_xval,
-      "id_xval" = rr
+      "id_xval" = rr,
+      "r" = r,
+      "rmse" = rmse,
+      "r_xval" = r_xval,
+      "rmse_xval" = rmse_xval
     )
   } # End Ap Allocation Bootstrap
 
@@ -228,15 +242,30 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, noise = "white",
 
   S_mat <- matrix(NA, nrow = length(S), ncol = it)
   x_mat <- matrix(NA, nrow = nrow(x), ncol = it)
-  bhat_mat <- matrix(NA, nrow = length(bhat), ncol = it)
-  res_mat <- res_xval_mat <- matrix(NA, nrow = length(res), ncol = it)
+  bhat_mat <- matrix(NA, nrow = length(b), ncol = it)
+  res_mat <- matrix(NA, nrow = length(b), ncol = it)
+  res_xval_mat <- matrix(NA, nrow = length(b), ncol = it)
+  stats_mat <- matrix(NA, nrow = 4, ncol = it,
+                      dimnames = list(
+                        c("r", "rmse", "r_xval", "rmse_xval"),
+                        seq(1, it, 1)
+                      ))
 
   for(i in 1:it) {
+
+    # Non-cross-validated index
+    idx <- k_list[[i]]$id_xval
+    id <- which(!seq(1, length(b), 1) %in% idx)
+
     S_mat[,i] <- k_list[[i]]$S
     x_mat[,i] <- k_list[[i]]$x
-    bhat_mat[,i] <- k_list[[i]]$bhat
-    res_mat[,i] <- k_list[[i]]$res
+    bhat_mat[id,i] <- k_list[[i]]$bhat
+    res_mat[id,i] <- k_list[[i]]$res
     res_xval_mat[k_list[[i]]$id_xval,i] <- k_list[[i]]$res_xval
+    stats_mat[1,i] <- k_list[[i]]$r
+    stats_mat[2,i] <- k_list[[i]]$rmse
+    stats_mat[3,i] <- k_list[[i]]$r_xval
+    stats_mat[4,i] <- k_list[[i]]$rmse_xval
   }
 
   # ======================================= #
@@ -296,6 +325,15 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, noise = "white",
 
   names(res_xval_df) <- c("res.low", "res.mu", "res.high")
 
+  # ================ #
+  # error statistics
+  # ================ #
+  stats_df <- as.data.frame(
+    t(apply(stats_mat, 1, function(x) quantile(x, probs = c(alpha_symm, 0.500, 1 - alpha_symm))))
+    )
+
+  colnames(stats_df) <- c("low", "mu", "high")
+
   # =============================== @
   # RETURN
   # =============================== @
@@ -318,7 +356,8 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, noise = "white",
                       res_xval_df$res.mu - res_xval_df$res.low)) / 1.96),
       "RMSE" = mean(abs(res_xval_df$res.mu)),
       "r" = cor.test(b, (b + res_xval_df$res.mu))$estimate
-    )
+    ),
+    "e.stats" = stats_df
   )
 
   return(SMITE_list)

@@ -52,6 +52,8 @@ residuals.xval - Only cross-validated residuals from the calibration
 e - Relevant error metrics. It enumerates the Standard Error of Prediction (SEP), Root-Mean-Square-Error (RMSE), and the correlation coefficient (r).
 
 e.xval - Relevant error metrics for the cross-validated data points specifically.
+
+e.stats - alpha-confidence intervals for R and RMSE (non-cross-validated and cross-validated)
 }
 \description{
 Create a model (x) based on the 'forward' coral variable matrix (A) and the reconstruction target (b).
