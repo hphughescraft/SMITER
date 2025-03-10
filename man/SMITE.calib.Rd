@@ -14,7 +14,8 @@ SMITE.calib(
   acc = NULL,
   eigenclean = NULL,
   alpha = 0.05,
-  xval = NULL
+  xval = NULL,
+  bs.errors = FALSE
 )
 }
 \arguments{
@@ -35,6 +36,10 @@ SMITE.calib(
 \item{eigenclean}{Describes how (if at all) the singular values should be truncated to 'clean' the inverse solution. If the value is between 0 and 1, it will remove singular values based on the cumulative variance explained. If the value is greater than 1, it will return that many singular values (from the highest order).}
 
 \item{alpha}{The significance level for the confidence interval (i.e., 0.05 = 95-percent confidence).}
+
+\item{xval}{Cross-validation window size.}
+
+\item{bs.errors}{TRUE or FALSE whether you want to perform bootstrapping with the error matrices.}
 }
 \value{
 S - Confidence intervals on the singular values of the forward matrix,
@@ -53,7 +58,7 @@ e - Relevant error metrics. It enumerates the Standard Error of Prediction (SEP)
 
 e.xval - Relevant error metrics for the cross-validated data points specifically.
 
-e.stats - alpha-confidence intervals for R and RMSE (non-cross-validated and cross-validated)
+e.stats - Confidence intervals for R and RMSE (non-cross-validated and cross-validated). The size of the confidence interval is based on alpha.
 }
 \description{
 Create a model (x) based on the 'forward' coral variable matrix (A) and the reconstruction target (b).
