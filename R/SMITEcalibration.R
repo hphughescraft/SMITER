@@ -13,8 +13,9 @@
 #' @param bs.errors TRUE or FALSE whether you want to perform bootstrapping for error estimations. Default will perform a boostrapped block cross-validation.
 #' @return S - Confidence intervals on the singular values of the forward matrix,
 #' @return x - SMITE model parameters, or loadings, for each column of the forward matrix.
-#' @return bhat - Predicted target anomalies
-#' @return recon - Predicted absolute target values
+#' @return bhat - Predicted target anomalies from in-sample blocks
+#' @return bhat.xval - predicted target anomalies from out-of-sample blocks
+#' @return recon - Predicted absolute target values from out-of-sample blocks
 #' @return residuals - Residuals from the calibration (bhat - b)
 #' @return residuals.xval - Only cross-validated residuals from the calibration
 #' @return e - Relevant error metrics. It enumerates the Standard Error of Prediction (SEP), Root-Mean-Square-Error (RMSE), and the correlation coefficient (r).
@@ -101,19 +102,24 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, acc = NULL,
 
     if(bs.errors) { # If bootstrapping, construct synthetic time series
 
+      block_track <- c()
 
       while(nrow(Ap) < nrow(A)) {
         start <- sample(1:(nrow(A) - xval + 1), 1)
-        A_block <- A[start:(start + xval - 1),]
-        b_block <- as.matrix(b[start:(start + xval - 1),])
+        block <- start:(start + xval - 1)
+
+        A_block <- A[block,]
+        b_block <- as.matrix(b[block,])
 
         Ap <- rbind(Ap, A_block)
         bp <- rbind(bp, b_block)
+        block_track <- c(block_track, block)
       }
 
       # Trim to N
       Ap <- Ap[1:nrow(A),]
       bp <- bp[1:nrow(b),]
+      block_track <- block_track[1:nrow(A)]
 
     } else { # Otherwise, just make it A and bootstrap will use only cross-validation
       Ap <- A
@@ -178,6 +184,10 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, acc = NULL,
     bhat <- Apx %*% x
     bhat_xval <- Apv %*% x
 
+    # Test
+    # plot(x = c(1:33)[-(rr)], y = bhat, col = 'blue', type = 'l', main = k)
+    # lines(x = rr, y = bhat_xval, col = 'red')
+
     # =============================== #
     # Store S, m, & bhat, & residuals
     # =============================== #
@@ -195,11 +205,11 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, acc = NULL,
     #             bhat[si:length(bhat)])
     # }
 
-    # Residuals
+    # Residuals (use universal sd(b) for scaling)
     res <- (bhat - bpx) * sd(b)
     res_xval <- (bhat_xval - bpv) * sd(b)
 
-    # Statistics
+    # Statistics (use universal sd(b) for scaling)
     r <- cor.test(bhat, bpx)$estimate
     rmse <- (sum(sqrt((bpx - bhat)^2)) / length(bhat)) * sd(b)
 
@@ -210,8 +220,10 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, acc = NULL,
       "S" = S,
       "x" = x,
       "bhat" = bhat,
+      "bhat_xval" = bhat_xval,
       "res" = res,
       "res_xval" = res_xval,
+      "block_track" = block_track,
       "id_xval" = rr,
       "r" = r,
       "rmse" = rmse,
@@ -227,6 +239,7 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, acc = NULL,
   S_mat <- matrix(NA, nrow = length(S), ncol = it)
   x_mat <- matrix(NA, nrow = nrow(x), ncol = it)
   bhat_mat <- matrix(NA, nrow = length(b), ncol = it)
+  bhat_xval_mat <- matrix(NA, nrow = length(b), ncol = it)
   res_mat <- matrix(NA, nrow = length(b), ncol = it)
   res_xval_mat <- matrix(NA, nrow = length(b), ncol = it)
   stats_mat <- matrix(NA, nrow = 4, ncol = it,
@@ -238,14 +251,16 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, acc = NULL,
   for(i in 1:it) {
 
     # Non-cross-validated index
+    block_track <- k_list[[i]]$block_track
     idx <- k_list[[i]]$id_xval
-    id <- which(!seq(1, length(b), 1) %in% idx)
+    id <- seq_len(length(b))[-idx]
 
     S_mat[,i] <- k_list[[i]]$S
     x_mat[,i] <- k_list[[i]]$x
-    bhat_mat[id,i] <- k_list[[i]]$bhat
+    bhat_mat[block_track[id],i] <- k_list[[i]]$bhat
+    bhat_xval_mat[block_track[idx],i] <- k_list[[i]]$bhat_xval
     res_mat[id,i] <- k_list[[i]]$res
-    res_xval_mat[k_list[[i]]$id_xval,i] <- k_list[[i]]$res_xval
+    res_xval_mat[idx,i] <- k_list[[i]]$res_xval
     stats_mat[1,i] <- k_list[[i]]$r
     stats_mat[2,i] <- k_list[[i]]$rmse
     stats_mat[3,i] <- k_list[[i]]$r_xval
@@ -285,13 +300,21 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, acc = NULL,
   # ============ #
   # bhat & recon
   # ============ #
+
   bhat_df <- as.data.frame(
-    t(apply(bhat_mat, 1, function(x) quantile(na.omit(x), probs = c(alpha_symm, 0.500, 1 - alpha_symm))))
+    t(apply(bhat_mat, 1,
+            function(x) quantile(na.omit(x), probs = c(alpha_symm, 0.500, 1 - alpha_symm))))
   )
 
-  names(bhat_df) <- c("bhat.low", "bhat.mu", "bhat.high")
+  bhat_xval_df <- as.data.frame(
+    t(apply(bhat_xval_mat, 1,
+            function(x) quantile(na.omit(x), probs = c(alpha_symm, 0.500, 1 - alpha_symm))))
+  )
 
-  recon_df <- (bhat_df * sd(b)) + mean(b)
+  names(bhat_df) <- names(bhat_xval_df) <- c("bhat.low", "bhat.mu", "bhat.high")
+
+  # Use cross-validated samples for reconstruction
+  recon_df <- (bhat_xval_df * sd(b)) + mean(b)
 
   # ============ #
   # residuals
@@ -326,6 +349,7 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, acc = NULL,
     "S" = S_df,
     "x" = x_df,
     "bhat" = bhat_df,
+    "bhat.xval" = bhat_xval_df,
     "recon" = recon_df,
     "residuals" = res_df,
     "residuals.xval" = res_xval_df,
