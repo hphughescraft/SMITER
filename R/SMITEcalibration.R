@@ -6,12 +6,11 @@
 #' @param Ae A t x p matrix containing the errors for the forward matrix.
 #' @param be Error estimates for the reconstruction target. It can either be one value or a vector of equal length to the reconstruction target (t x 1).
 #' @param it The number of bootstrap Monte Carlo iterations (recommended at 10,000).
-#' @param noise Either 'white' or 'red', describing how the noise is propagated into the model.
 #' @param acc Autocorrelation Coefficient; if noise is specified as 'red', it describes the degree of autocorrelation in the error term.
 #' @param eigenclean Describes how (if at all) the singular values should be truncated to 'clean' the inverse solution. If the value is between 0 and 1, it will remove singular values based on the cumulative variance explained. If the value is greater than 1, it will return that many singular values (from the highest order).
 #' @param alpha The significance level for the confidence interval (i.e., 0.05 = 95-percent confidence).
 #' @param xval Cross-validation window size.
-#' @param bs.errors TRUE or FALSE whether you want to perform bootstrapping with the error matrices.
+#' @param bs.errors TRUE or FALSE whether you want to perform bootstrapping for error estimations. Default will perform a boostrapped block cross-validation.
 #' @return S - Confidence intervals on the singular values of the forward matrix,
 #' @return x - SMITE model parameters, or loadings, for each column of the forward matrix.
 #' @return bhat - Predicted target anomalies
@@ -41,8 +40,8 @@
 #' result <- SMITE.calib(A = A, b = b, Ae = Ae, be = be, eigenclean = ncol(A))
 
 
-SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, noise = "white", acc = NULL,
-                        eigenclean = NULL, alpha = 0.05, xval = NULL, bs.errors = FALSE) {
+SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, acc = NULL,
+                        eigenclean = NULL, alpha = 0.05, xval = NULL, bs.errors = TRUE) {
 
 
   # =============================== #
@@ -72,21 +71,13 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, noise = "white",
     stop("Error estimates of the reconstruction target (be) must be either one value or the same dimensions as the reconstruction target (b).")
   }
 
-  if(is.null(noise)) {
-    stop("Please specify whether the noise is 'red' (autocorrelated) or 'white' (Gaussian).")
-  }
-
-  if(noise == 'red' & is.null(acc)) {
-    stop("Please specify the Autocorrelation Coefficient for the red noise.")
-  }
-
   if(is.null(xval)) {
     print("No window size for cross-validation (xval) specified. Using minimum window size of 1.")
     xval <- 1
   }
 
-  if(xval <= 0 | xval > (nrow(A) / 2)) {
-    stop("Cross-validation window should be at least 1 and no larger than half the size of the data.")
+  if(xval <= 0) {
+    stop("Cross-validation window should be at least 1.")
   }
 
   # =============================== #
@@ -101,43 +92,28 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, noise = "white",
     # =============================== #
 
     # Preallocate
-    Ap <- matrix(data = NA, nrow = nrow(A), ncol = ncol(A))
-    bp <- matrix(data = NA, nrow = nrow(b), ncol = ncol(b))
+    Ap <- matrix(nrow = 0, ncol = ncol(A))
+    bp <- matrix(nrow = 0, ncol = ncol(b))
 
     # =============================== #
     # Nested For-Loop: Ap allocation
     # =============================== #
 
-    if(bs.errors) { # If bootstrapping with errors, then perturb with errors
-      if(noise == 'white') {
-        for(j in 1:ncol(Ap)) {
-          for(i in 1:nrow(Ap)) {
-            # Perturb each cell of A by the error defined in the corresponding cell of Ae
-            Ap[i,j] <- rnorm(n = 1, mean = A[i,j], sd = Ae[i,j])
-          }
-        }
-      } else if(noise == 'red') {
+    if(bs.errors) { # If bootstrapping, construct synthetic time series
 
-        Ar <- matrix(data = NA, nrow = nrow(A), ncol = ncol(A))
 
-        for(j in 1:ncol(Ar)) {
-          for(i in 1:nrow(Ar)) {
-            if(i == 1) {
-              Ar[i,j] <- rnorm(1, 0, Ae[i,j])
-            } else {
-              Ar[i,j] <- (Ar[i - 1, j] * acc) + rnorm(1, 0, Ae[i,j])
-            }
-          }
-        }
+      while(nrow(Ap) < nrow(A)) {
+        start <- sample(1:(nrow(A) - xval + 1), 1)
+        A_block <- A[start:(start + xval - 1),]
+        b_block <- as.matrix(b[start:(start + xval - 1),])
 
-        Ap <- A + Ar
-      } else {
-        stop("Please specify whether the noise is red or white.")
+        Ap <- rbind(Ap, A_block)
+        bp <- rbind(bp, b_block)
       }
 
-      for(i in 1:nrow(Ap)) {
-        bp[i] <- rnorm(n = 1, mean = b[i], sd = be[i])
-      }
+      # Trim to N
+      Ap <- Ap[1:nrow(A),]
+      bp <- bp[1:nrow(b),]
 
     } else { # Otherwise, just make it A and bootstrap will use only cross-validation
       Ap <- A
@@ -145,12 +121,8 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, noise = "white",
     }
 
 
-
-
-
-
     Ap_norm <- apply(Ap, MARGIN = 2, FUN = function(x) (x - mean(x)) /  sd(x))
-    bp_norm <- (bp - mean(bp)) / sd(bp)
+    bp_norm <- as.matrix((bp - mean(bp)) / sd(bp))
 
     # =============================== #
     # Cross-validation

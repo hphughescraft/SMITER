@@ -10,12 +10,11 @@ SMITE.calib(
   Ae = NULL,
   be = NULL,
   it = 10000,
-  noise = "white",
   acc = NULL,
   eigenclean = NULL,
   alpha = 0.05,
   xval = NULL,
-  bs.errors = FALSE
+  bs.errors = TRUE
 )
 }
 \arguments{
@@ -29,8 +28,6 @@ SMITE.calib(
 
 \item{it}{The number of bootstrap Monte Carlo iterations (recommended at 10,000).}
 
-\item{noise}{Either 'white' or 'red', describing how the noise is propagated into the model.}
-
 \item{acc}{Autocorrelation Coefficient; if noise is specified as 'red', it describes the degree of autocorrelation in the error term.}
 
 \item{eigenclean}{Describes how (if at all) the singular values should be truncated to 'clean' the inverse solution. If the value is between 0 and 1, it will remove singular values based on the cumulative variance explained. If the value is greater than 1, it will return that many singular values (from the highest order).}
@@ -39,7 +36,7 @@ SMITE.calib(
 
 \item{xval}{Cross-validation window size.}
 
-\item{bs.errors}{TRUE or FALSE whether you want to perform bootstrapping with the error matrices.}
+\item{bs.errors}{TRUE or FALSE whether you want to perform bootstrapping for error estimations. Default will perform a boostrapped block cross-validation.}
 }
 \value{
 S - Confidence intervals on the singular values of the forward matrix,
