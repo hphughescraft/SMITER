@@ -43,9 +43,11 @@ S - Confidence intervals on the singular values of the forward matrix,
 
 x - SMITE model parameters, or loadings, for each column of the forward matrix.
 
-bhat - Predicted target anomalies
+bhat - Predicted target anomalies from in-sample blocks
 
-recon - Predicted absolute target values
+bhat.xval - predicted target anomalies from out-of-sample blocks
+
+recon - Predicted absolute target values from out-of-sample blocks
 
 residuals - Residuals from the calibration (bhat - b)
 
