@@ -10,7 +10,7 @@
 #' @param eigenclean Describes how (if at all) the singular values should be truncated to 'clean' the inverse solution. If the value is between 0 and 1, it will remove singular values based on the cumulative variance explained. If the value is greater than 1, it will return that many singular values (from the highest order).
 #' @param alpha The significance level for the confidence interval (i.e., 0.05 = 95-percent confidence).
 #' @param xval Cross-validation window size.
-#' @param bs.errors TRUE or FALSE whether you want to perform bootstrapping for error estimations. Default will perform a boostrapped block cross-validation.
+#' @param weights TRUE or FALSE on whether you want to incorporate uncertainty (Ae and be) into calibration. Default is TRUE.
 #' @return S - Confidence intervals on the singular values of the forward matrix,
 #' @return x - SMITE model parameters, or loadings, for each column of the forward matrix.
 #' @return bhat - Predicted target anomalies from in-sample blocks
@@ -42,7 +42,7 @@
 
 
 SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, acc = NULL,
-                        eigenclean = NULL, alpha = 0.05, xval = NULL, bs.errors = TRUE) {
+                        eigenclean = NULL, alpha = 0.05, xval = NULL, weights = TRUE) {
 
 
   # =============================== #
@@ -92,43 +92,48 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, acc = NULL,
     # Perturb A (Ap) & b (bp)
     # =============================== #
 
-    # Preallocate
+    # Initialize
     Ap <- matrix(nrow = 0, ncol = ncol(A))
+    Aep <- matrix(nrow = 0, ncol = ncol(Ae))
     bp <- matrix(nrow = 0, ncol = ncol(b))
+    bep <- matrix(nrow = 0, ncol = ncol(be))
 
     # =============================== #
     # Nested For-Loop: Ap allocation
     # =============================== #
 
-    if(bs.errors) { # If bootstrapping, construct synthetic time series
+    block_track <- c()
 
-      block_track <- c()
+    while(nrow(Ap) < nrow(A)) {
+      start <- sample(1:(nrow(A) - xval + 1), 1)
+      block <- start:(start + xval - 1)
 
-      while(nrow(Ap) < nrow(A)) {
-        start <- sample(1:(nrow(A) - xval + 1), 1)
-        block <- start:(start + xval - 1)
+      A_block <- A[block,]
+      Ae_block <- Ae[block,]
+      b_block <- as.matrix(b[block,])
+      be_block <- as.matrix(be[block,])
 
-        A_block <- A[block,]
-        b_block <- as.matrix(b[block,])
+      Ap <- rbind(Ap, A_block)
+      Aep <- rbind(Aep, Ae_block)
+      bp <- rbind(bp, b_block)
+      bep <- rbind(bep, be_block)
 
-        Ap <- rbind(Ap, A_block)
-        bp <- rbind(bp, b_block)
-        block_track <- c(block_track, block)
-      }
-
-      # Trim to N
-      Ap <- Ap[1:nrow(A),]
-      bp <- bp[1:nrow(b),]
-      block_track <- block_track[1:nrow(A)]
-
-    } else { # Otherwise, just make it A and bootstrap will use only cross-validation
-      Ap <- A
-      bp <- b
+      block_track <- c(block_track, block)
     }
 
+    # Trim to N
+    Ap <- Ap[1:nrow(A),]
+    Aep <- Aep[1:nrow(Ae),]
+    bp <- bp[1:nrow(b),]
+    bep <- bep[1:nrow(be),]
+    block_track <- block_track[1:nrow(A)]
 
     Ap_norm <- apply(Ap, MARGIN = 2, FUN = function(x) (x - mean(x)) /  sd(x))
+    Aep_norm <- sweep(Aep, 2, apply(Ap, MARGIN = 2, function(x) sd(x)), "/")
+
     bp_norm <- as.matrix((bp - mean(bp)) / sd(bp))
+    bep_norm <- as.matrix(bep / sd(bp))
+
 
     # =============================== #
     # Cross-validation
@@ -140,12 +145,16 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, acc = NULL,
     # Store indexed rows
     rr <- si:(si + xval - 1)
     Apv <- Ap_norm[rr,]
+    Aepv <- Aep_norm[rr,]
     bpv <- bp_norm[rr,]
+    bepv <- bep_norm[rr,]
+
 
     # Remove indexed rows
     Apx <- Ap_norm[-(rr),]
+    Aepx <- Aep_norm[-(rr),]
     bpx <- bp_norm[-(rr),]
-
+    bepx <- bep_norm[-(rr),]
 
 
     # =============================== #
@@ -181,6 +190,60 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, acc = NULL,
     # =============================== #
 
     x <- V %*% diag(1/S) %*% t(U) %*% bpx
+
+    if(weights) {
+
+      # Compute row-wise total variance: be_i + sum(x_j^2 * Ae_ij)
+      tvar <- rep(0, nrow(Apx))
+      for (i in 1:nrow(Apx)) {
+        Avar <- sum((x^2) * (Aepx[i,]^2))  # variance contribution from A
+        tvar[i] <- bepx[i]^2 + Avar     # total variance per row (b + A)
+      }
+
+      # Weight matrix: inverse of total variance
+      W <- diag(sqrt(1 / tvar))  # sqrt(W) for premultiplication
+
+
+      # =============================== #
+      # Weighted: SVD of Ap
+      # =============================== #
+      Apxw <- W %*% Apx
+      bpxw <- W %*% bpx
+
+      G <- svd(Apxw)
+
+      U <- G$u
+      V <- G$v
+      S <- G$d
+
+      # =============================== #
+      # Weighted: Eigenclean
+      # =============================== #
+      if(is.null(eigenclean)) {
+        eigenclean <- ncol(A)
+      }
+
+      if(eigenclean > 0 & eigenclean < 1) { # Cumulative Variance Explained
+        p <- (cumsum(S)/sum(S)) < eigenclean
+        S <- S[p]
+        U <- U[,p]
+        V <- V[,p]
+      } else if(eigenclean >= 1) { # Number of singular values returned
+        p <- eigenclean
+        S <- S[1:p]
+        U <- U[,1:p]
+        V <- V[,1:p]
+      }
+
+      # =============================== #
+      # Weighted: Moore-Penrose Pseudoinverse
+      # =============================== #
+
+      x <- V %*% diag(1/S) %*% t(U) %*% bpxw
+
+
+    }
+
     bhat <- Apx %*% x
     bhat_xval <- Apv %*% x
 

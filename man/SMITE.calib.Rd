@@ -14,7 +14,7 @@ SMITE.calib(
   eigenclean = NULL,
   alpha = 0.05,
   xval = NULL,
-  bs.errors = TRUE
+  weights = TRUE
 )
 }
 \arguments{
@@ -36,7 +36,7 @@ SMITE.calib(
 
 \item{xval}{Cross-validation window size.}
 
-\item{bs.errors}{TRUE or FALSE whether you want to perform bootstrapping for error estimations. Default will perform a boostrapped block cross-validation.}
+\item{weights}{TRUE or FALSE on whether you want to incorporate uncertainty (Ae and be) into calibration. Default is TRUE.}
 }
 \value{
 S - Confidence intervals on the singular values of the forward matrix,
