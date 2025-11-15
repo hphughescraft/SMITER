@@ -319,16 +319,8 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, acc = NULL,
     # Training blocks (mapped back to original data)
     id <- block_track[-k_list[[i]]$id_xval]
 
-    yhat_mat[id, i] <- k_list[[i]]$yhat
-    xhat_mat[id, i] <- k_list[[i]]$xhat
-
-    yhat_xval_mat[idx, i] <- k_list[[i]]$yhat_xval
-    xhat_xval_mat[idx, i] <- k_list[[i]]$xhat_xval
-
-    # Non-cross-validated index
-    block_track <- k_list[[i]]$block_track
-    idx <- k_list[[i]]$id_xval
-    id <- seq_len(length(b))[-idx]
+    bhat_mat[id, i] <- k_list[[i]]$bhat
+    bhat_xval_mat[idx, i] <- k_list[[i]]$bhat_xval
 
     S_mat[,i] <- k_list[[i]]$S
     x_mat[,i] <- k_list[[i]]$x
