@@ -265,10 +265,10 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, acc = NULL,
 
     # Statistics (use universal sd(b) for scaling)
     r <- cor.test(bhat, bpx)$estimate
-    rmse <- sqrt(mean((bpx - bhat)^2)) * sd(b)
+    rmse <- sqrt(mean((bpx - bhat)^2))
 
     r_xval <- cor.test(bpv, bhat_xval)$estimate
-    rmse_xval <- sqrt(mean((bpv - bhat_xval)^2)) * sd(b)
+    rmse_xval <- sqrt(mean((bpv - bhat_xval)^2))
 
     k_list[[k]] <- list(
       "S" = S,
