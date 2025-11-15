@@ -351,7 +351,7 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, acc = NULL,
   rownames(x_df) <- colnames(A)
 
   # ============ #
-  # bhat & recon
+  # bhat
   # ============ #
 
   bhat_df <- as.data.frame(
