@@ -250,8 +250,8 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, acc = NULL,
 
     }
 
-    bhat <- c(((Apx %*% x) * sd(b)) + mean(b))
-    bhat_xval <- c(((Apv %*% x) * sd(b)) + mean(b))
+    bhat <- c((Apx %*% x))
+    bhat_xval <- c((Apv %*% x))
 
     # Test
     # plot(x = c(1:length(b))[-rr], y = bpx, col = 'blue', type = 'l')
@@ -265,16 +265,16 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, acc = NULL,
 
     # Statistics (use universal sd(b) for scaling)
     r <- cor.test(bhat, bpx)$estimate
-    rmse <- sqrt(mean((bpx - bhat)^2))
+    rmse <- sqrt(mean((bpx - bhat)^2)) * sd(b)
 
     r_xval <- cor.test(bpv, bhat_xval)$estimate
-    rmse_xval <- sqrt(mean((bpv - bhat_xval)^2))
+    rmse_xval <- sqrt(mean((bpv - bhat_xval)^2)) * sd(b)
 
     k_list[[k]] <- list(
       "S" = S,
       "x" = x,
-      "bhat" = bhat,
-      "bhat_xval" = bhat_xval,
+      "bhat" = (bhat * sd(b)) + mean(b),
+      "bhat_xval" = (bhat_xval * sd(b)) + mean(b),
       "block_track" = block_track,
       "id_xval" = rr,
       "r" = r,
