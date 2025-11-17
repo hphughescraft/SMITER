@@ -266,9 +266,11 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, acc = NULL,
     # Statistics (use universal sd(b) for scaling)
     r <- cor.test(bhat, bpx)$estimate
     rmse <- sqrt(mean((bpx - bhat)^2)) * sd(b)
+    srmse <- sqrt(mean((bpx - bhat)^2))
 
     r_xval <- cor.test(bpv, bhat_xval)$estimate
     rmse_xval <- sqrt(mean((bpv - bhat_xval)^2)) * sd(b)
+    srmse_xval <- sqrt(mean((bpv - bhat_xval)^2))
 
     k_list[[k]] <- list(
       "S" = S,
@@ -279,8 +281,10 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, acc = NULL,
       "id_xval" = rr,
       "r" = r,
       "rmse" = rmse,
+      "srmse" = srmse,
       "r_xval" = r_xval,
-      "rmse_xval" = rmse_xval
+      "rmse_xval" = rmse_xval,
+      "srmse_xval" = srmse_xval
     )
   } # End Ap Allocation Bootstrap
 
@@ -292,9 +296,9 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, acc = NULL,
   x_mat <- matrix(NA, nrow = nrow(x), ncol = it)
   bhat_mat <- matrix(NA, nrow = length(b), ncol = it)
   bhat_xval_mat <- matrix(NA, nrow = length(b), ncol = it)
-  stats_mat <- matrix(NA, nrow = 4, ncol = it,
+  stats_mat <- matrix(NA, nrow = 6, ncol = it,
                       dimnames = list(
-                        c("r", "rmse", "r_xval", "rmse_xval"),
+                        c("r", "rmse", "srmse", "r_xval", "rmse_xval", "srmse_xval"),
                         seq(1, it, 1)
                       ))
 
@@ -316,8 +320,10 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, acc = NULL,
 
     stats_mat[1,i] <- k_list[[i]]$r
     stats_mat[2,i] <- k_list[[i]]$rmse
-    stats_mat[3,i] <- k_list[[i]]$r_xval
-    stats_mat[4,i] <- k_list[[i]]$rmse_xval
+    stats_mat[3,i] <- k_list[[i]]$srmse
+    stats_mat[4,i] <- k_list[[i]]$r_xval
+    stats_mat[5,i] <- k_list[[i]]$rmse_xval
+    stats_mat[6,i] <- k_list[[i]]$srmse_xval
   }
 
   # ======================================= #
