@@ -6,24 +6,20 @@
 #' @param Ae A t x p matrix containing the errors for the forward matrix.
 #' @param be Error estimates for the reconstruction target. It can either be one value or a vector of equal length to the reconstruction target (t x 1).
 #' @param it The number of bootstrap Monte Carlo iterations (recommended at 10,000).
-#' @param acc Autocorrelation Coefficient; if noise is specified as 'red', it describes the degree of autocorrelation in the error term.
 #' @param eigenclean Describes how (if at all) the singular values should be truncated to 'clean' the inverse solution. If the value is between 0 and 1, it will remove singular values based on the cumulative variance explained. If the value is greater than 1, it will return that many singular values (from the highest order).
 #' @param alpha The significance level for the confidence interval (i.e., 0.05 = 95-percent confidence).
 #' @param xval Cross-validation window size.
 #' @param weights TRUE or FALSE on whether you want to incorporate uncertainty (Ae and be) into calibration. Default is TRUE.
 #' @return S - Confidence intervals on the singular values of the forward matrix,
-#' @return x - SMITE model parameters, or loadings, for each column of the forward matrix.
-#' @return bhat - Predicted target anomalies from in-sample blocks
-#' @return bhat.xval - predicted target anomalies from out-of-sample blocks
-#' @return recon - Predicted absolute target values from out-of-sample blocks
-#' @return residuals - Residuals from the calibration (bhat - b)
-#' @return residuals.xval - Only cross-validated residuals from the calibration
-#' @return e - Relevant error metrics. It enumerates the Standard Error of Prediction (SEP), Root-Mean-Square-Error (RMSE), and the correlation coefficient (r).
-#' @return e.xval - Relevant error metrics for the cross-validated data points specifically.
-#' @return e.stats - Confidence intervals for R and RMSE (non-cross-validated and cross-validated). The size of the confidence interval is based on alpha.
+#' @return x - Summary of SMITE model parameters, or loadings, for each column of the forward matrix.
+#' @return x_bootstrap - Individual bootstrap iterations of SMITE model parameters, needed for propagating uncertainty in predictions.
+#' @return res_model - Standard deviation and autoregressive coefficients (1 & 2) of the residuals of each bootstrap.
+#' @return bhat - Predicted target values from in-sample blocks
+#' @return bhat_xval - predicted target values from out-of-sample blocks
+#' @return e_stats - Confidence intervals for R and RMSE (non-cross-validated and cross-validated). The size of the confidence interval is based on alpha.
 #' @export
 #' @examples
-#' # Load data from Hughes et al. (in revision)
+#' # Load data from Hughes et al. (2024)
 #' library(SMITER)
 #' data(BMDA_1B_Comp)
 #' data(BMDA_1B_EComp)
@@ -41,7 +37,7 @@
 #' result <- SMITE.calib(A = A, b = b, Ae = Ae, be = be, eigenclean = ncol(A))
 
 
-SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, acc = NULL,
+SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000,
                         eigenclean = NULL, alpha = 0.05, xval = NULL, weights = TRUE) {
 
 
@@ -159,10 +155,6 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, acc = NULL,
     bpx <- bp_norm[-(rr),]
     bepx <- bep_norm[-(rr),]
 
-    # Test
-    # plot(bpx, col = 'blue', type = 'l')
-    # lines(Apx[,2] * -1, col = 'red')
-
     # =============================== #
     # SVD of Ap
     # =============================== #
@@ -176,15 +168,21 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, acc = NULL,
     # Eigenclean
     # =============================== #
     if(is.null(eigenclean)) {
+      print("No regularization (eigenclean) specified. Implementing 0 regularization.")
       eigenclean <- ncol(A)
     }
 
-    if(eigenclean > 0 & eigenclean < 1) { # Cumulative Variance Explained
-      p <- (cumsum(S)/sum(S)) < eigenclean
+    if(eigenclean > 0 & eigenclean <= 1) { # Cumulative Variance Explained
+      p <- which((cumsum(S^2)/sum(S^2)) <= eigenclean)
+
+      if(length(p) < 2) {
+        stop("Eigenclean CVE is too small. Select a larger ")
+      }
+
       S <- S[p]
       U <- U[,p]
       V <- V[,p]
-    } else if(eigenclean >= 1) { # Number of singular values returned
+    } else if(eigenclean > 1) { # Number of singular values returned
       p <- eigenclean
       S <- S[1:p]
       U <- U[,1:p]
@@ -229,12 +227,12 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, acc = NULL,
         eigenclean <- ncol(A)
       }
 
-      if(eigenclean > 0 & eigenclean < 1) { # Cumulative Variance Explained
-        p <- (cumsum(S)/sum(S)) < eigenclean
+      if(eigenclean > 0 & eigenclean <= 1) { # Cumulative Variance Explained
+        p <- which((cumsum(S^2)/sum(S^2)) < eigenclean)
         S <- S[p]
         U <- U[,p]
         V <- V[,p]
-      } else if(eigenclean >= 1) { # Number of singular values returned
+      } else if(eigenclean > 1) { # Number of singular values returned
         p <- eigenclean
         S <- S[1:p]
         U <- U[,1:p]
@@ -253,12 +251,6 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, acc = NULL,
     bhat <- c((Apx %*% x))
     bhat_xval <- c((Apv %*% x))
 
-    # Test
-    # plot(x = c(1:length(b))[-rr], y = bpx, col = 'blue', type = 'l')
-    # lines(x = rr, y = bhat_xval, col = 'red')
-    # lines(x = rr, y = bpv, col = 'purple')
-    # lines(x = c(1:length(b))[-rr], y = bhat, col = 'red')
-
     # =============================== #
     # Store S, m, & bhat, & residuals
     # =============================== #
@@ -266,25 +258,28 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, acc = NULL,
     # Statistics (use universal sd(b) for scaling)
     r <- cor.test(bhat, bpx)$estimate
     rmse <- sqrt(mean((bpx - bhat)^2)) * sd(b)
-    srmse <- sqrt(mean((bpx - bhat)^2))
 
     r_xval <- cor.test(bpv, bhat_xval)$estimate
     rmse_xval <- sqrt(mean((bpv - bhat_xval)^2)) * sd(b)
-    srmse_xval <- sqrt(mean((bpv - bhat_xval)^2))
+
+    # Residuals
+    res <- (bpx * sd(b)) - (bhat * sd(b))
+    res_xval <- (bpv * sd(b)) - (bhat_xval * sd(b))
+
 
     k_list[[k]] <- list(
       "S" = S,
       "x" = x,
       "bhat" = (bhat * sd(b)) + mean(b),
       "bhat_xval" = (bhat_xval * sd(b)) + mean(b),
+      "res" = res,
+      "res_xval" = res_xval,
       "block_track" = block_track,
       "id_xval" = rr,
       "r" = r,
       "rmse" = rmse,
-      "srmse" = srmse,
       "r_xval" = r_xval,
-      "rmse_xval" = rmse_xval,
-      "srmse_xval" = srmse_xval
+      "rmse_xval" = rmse_xval
     )
   } # End Ap Allocation Bootstrap
 
@@ -296,9 +291,11 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, acc = NULL,
   x_mat <- matrix(NA, nrow = nrow(x), ncol = it)
   bhat_mat <- matrix(NA, nrow = length(b), ncol = it)
   bhat_xval_mat <- matrix(NA, nrow = length(b), ncol = it)
-  stats_mat <- matrix(NA, nrow = 6, ncol = it,
+  res_mat <- matrix(NA, nrow = length(b), ncol = it)
+  res_xval_mat <- matrix(NA, nrow = length(b), ncol = it)
+  stats_mat <- matrix(NA, nrow = 4, ncol = it,
                       dimnames = list(
-                        c("r", "rmse", "srmse", "r_xval", "rmse_xval", "srmse_xval"),
+                        c("r", "rmse", "r_xval", "rmse_xval"),
                         seq(1, it, 1)
                       ))
 
@@ -318,12 +315,13 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, acc = NULL,
     bhat_mat[id, i] <- k_list[[i]]$bhat
     bhat_xval_mat[idx, i] <- k_list[[i]]$bhat_xval
 
+    res_mat[id, i] <- k_list[[i]]$res
+    res_xval_mat[idx, i] <- k_list[[i]]$res_xval
+
     stats_mat[1,i] <- k_list[[i]]$r
     stats_mat[2,i] <- k_list[[i]]$rmse
-    stats_mat[3,i] <- k_list[[i]]$srmse
-    stats_mat[4,i] <- k_list[[i]]$r_xval
-    stats_mat[5,i] <- k_list[[i]]$rmse_xval
-    stats_mat[6,i] <- k_list[[i]]$srmse_xval
+    stats_mat[3,i] <- k_list[[i]]$r_xval
+    stats_mat[4,i] <- k_list[[i]]$rmse_xval
   }
 
   # ======================================= #
@@ -372,9 +370,16 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, acc = NULL,
 
   names(bhat_df) <- names(bhat_xval_df) <- c("Low", "Mu", "High")
 
-  # Test
-  # plot(b, type = 'l', col = 'blue')
-  # lines(bhat_xval_df$Mu, col = 'red')
+  # ============ #
+  # Residuals
+  # ============ #
+  res_model <-   rbind(
+    apply(res_xval_mat, 2, function(x) sd(x, na.rm = TRUE)),
+    apply(res_xval_mat, 2, function(x) acf(na.omit(x), plot = FALSE)$acf[c(2, 3)])
+  )
+
+  rownames(res_model) <- c('sigma', 'ar1', 'ar2')
+
 
   # ================ #
   # error statistics
@@ -392,6 +397,8 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000, acc = NULL,
   SMITE_list <- list(
     "S" = S_df,
     "x" = x_df,
+    "x_bootstrap" = x_mat,
+    "res_model" = res_model,
     "bhat" = bhat_df,
     "bhat_xval" = bhat_xval_df,
     "e_stats" = stats_df

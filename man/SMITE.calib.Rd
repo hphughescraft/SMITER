@@ -10,7 +10,6 @@ SMITE.calib(
   Ae = NULL,
   be = NULL,
   it = 10000,
-  acc = NULL,
   eigenclean = NULL,
   alpha = 0.05,
   xval = NULL,
@@ -28,8 +27,6 @@ SMITE.calib(
 
 \item{it}{The number of bootstrap Monte Carlo iterations (recommended at 10,000).}
 
-\item{acc}{Autocorrelation Coefficient; if noise is specified as 'red', it describes the degree of autocorrelation in the error term.}
-
 \item{eigenclean}{Describes how (if at all) the singular values should be truncated to 'clean' the inverse solution. If the value is between 0 and 1, it will remove singular values based on the cumulative variance explained. If the value is greater than 1, it will return that many singular values (from the highest order).}
 
 \item{alpha}{The significance level for the confidence interval (i.e., 0.05 = 95-percent confidence).}
@@ -41,29 +38,23 @@ SMITE.calib(
 \value{
 S - Confidence intervals on the singular values of the forward matrix,
 
-x - SMITE model parameters, or loadings, for each column of the forward matrix.
+x - Summary of SMITE model parameters, or loadings, for each column of the forward matrix.
 
-bhat - Predicted target anomalies from in-sample blocks
+x_bootstrap - Individual bootstrap iterations of SMITE model parameters, needed for propagating uncertainty in predictions.
 
-bhat.xval - predicted target anomalies from out-of-sample blocks
+res_model - Standard deviation and autoregressive coefficients (1 & 2) of the residuals of each bootstrap.
 
-recon - Predicted absolute target values from out-of-sample blocks
+bhat - Predicted target values from in-sample blocks
 
-residuals - Residuals from the calibration (bhat - b)
+bhat_xval - predicted target values from out-of-sample blocks
 
-residuals.xval - Only cross-validated residuals from the calibration
-
-e - Relevant error metrics. It enumerates the Standard Error of Prediction (SEP), Root-Mean-Square-Error (RMSE), and the correlation coefficient (r).
-
-e.xval - Relevant error metrics for the cross-validated data points specifically.
-
-e.stats - Confidence intervals for R and RMSE (non-cross-validated and cross-validated). The size of the confidence interval is based on alpha.
+e_stats - Confidence intervals for R and RMSE (non-cross-validated and cross-validated). The size of the confidence interval is based on alpha.
 }
 \description{
 Create a model (x) based on the 'forward' coral variable matrix (A) and the reconstruction target (b).
 }
 \examples{
-# Load data from Hughes et al. (in revision)
+# Load data from Hughes et al. (2024)
 library(SMITER)
 data(BMDA_1B_Comp)
 data(BMDA_1B_EComp)

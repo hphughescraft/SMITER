@@ -4,12 +4,23 @@
 \alias{SMITE.recon}
 \title{SMITE Reconstruction}
 \usage{
-SMITE.recon(A, x, Amu, Asd, bmu, bsd)
+SMITE.recon(
+  A,
+  x,
+  Amu,
+  Asd,
+  bmu,
+  bsd,
+  res_model,
+  res_model_type = c("gaussian", "ar1", "ar2"),
+  it = 10000,
+  alpha = 0.05
+)
 }
 \arguments{
 \item{A}{The 'forward' coral variable matrix (t x p; time in rows, coral parameters in columns).}
 
-\item{x}{A vector of SMITE model parameters (length p), ideally created from the SMITE.calib() function.}
+\item{x}{A matrix of individual bootstrapped SMITE model parameters (p x it), ideally created from the 'x_bootstrap' SMITE.calib() function.}
 
 \item{Amu}{A vector of length p giving the mean values of each coral variable in the calibration dataset.}
 
@@ -18,15 +29,24 @@ SMITE.recon(A, x, Amu, Asd, bmu, bsd)
 \item{bmu}{A single-element atomic vector giving the mean of the reconstruction target in the calibration dataset.}
 
 \item{bsd}{A single-element atomic vector giving the standard deviation of the reconstruction target in the calibration dataset.}
+
+\item{res_model}{An object from SMITE.calib(), bootstrapped iterations of the standard deviation of the residuals (sigma) and the AR1&2 coefficients ('ar1', 'ar2').}
+
+\item{res_model_type}{select between c('gaussian', 'ar1', and 'ar2') to determine how residual errors will be propagated.}
+
+\item{it}{The number of bootstrap iterations that will be performed to obtain confidence intervals on reconstructed values.}
+
+\item{alpha}{The significance level for the confidence interval (i.e., 0.05 = 95-percent confidence).}
 }
 \value{
-bhat - Predicted reconstruction target values. The SEP from the SMITE.calib() function can be used to estimate minimum errors (e.g., not associated with age model error).
+bhat - Predicted reconstruction target values with alpha confidence intervals.
 }
 \description{
 Use a model (x) created by SMITE.calib() to estimate the reconstruction target (b) based on the 'forward' coral variable matrix (A).
 }
 \examples{
-# Load data from Hughes et al. (in revision)
+
+# Load data from Hughes et al. (2024)
 library(SMITER)
 data(BMDA_1B_Comp)
 data(BMDA_1B_EComp)
@@ -42,18 +62,22 @@ be <- rep(0.02, length(b))
 # Execute SMITE Calibration with no truncation (i.e., all information retained).
 SMITE <- SMITE.calib(A = A, b = b, Ae = Ae, be = be, eigenclean = ncol(A))
 
-# Extract SMITE model parameters
-x <- SMITE$x$x.mu
+# Call bootstrap distribution SMITE model parameters
+x <- SMITE$x$x_bootstrap
 
-# Reconstruction (should be nearly identical to result$recon$bhat.mu, only minor differences due to bootstrapping)
+# Reconstruction (should be nearly identical to SMITE$bhat$bhat_mu, only minor differences due to bootstrapping)
 bhat <- SMITE.recon(
   A = A,
   x = x,
   Amu = colMeans(A),
-  Asd = apply(A, 2, function(x) sd(x)),
+  Asd = apply(A, 2, sd),
   bmu = mean(b),
-  bsd = sd(b)
+  bsd = sd(b),
+  res_model = SMITE$res_model,
+  res_model_type = 'gaussian', # Can choose between 'gaussian', 'ar1', or 'ar2'.
+  alpha = 0.05,
+  it = 10000
 )
 
-cbind(bhat, result$recon$bhat.mu)
+cbind(bhat, SMITE$bhat$bhat_mu)
 }
