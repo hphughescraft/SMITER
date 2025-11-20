@@ -12,6 +12,7 @@
 #' @param res_model An object from SMITE.calib(), bootstrapped iterations of the standard deviation of the residuals (sigma) and the AR1&2 coefficients ('ar1', 'ar2').
 #' @param res_model_type select between c('gaussian', 'ar1', and 'ar2') to determine how residual errors will be propagated.
 #' @return bhat - Predicted reconstruction target values with alpha confidence intervals.
+#' @importFrom stats sd cor.test quantile na.omit acf filter rnorm
 #' @export
 #' @examples
 #'
@@ -31,13 +32,11 @@
 #' # Execute SMITE Calibration with no truncation (i.e., all information retained).
 #' SMITE <- SMITE.calib(A = A, b = b, Ae = Ae, be = be, eigenclean = ncol(A))
 #'
-#' # Call bootstrap distribution SMITE model parameters
-#' x <- SMITE$x$x_bootstrap
 #'
-#' # Reconstruction (should be nearly identical to SMITE$bhat$bhat_mu, only minor differences due to bootstrapping)
+#' # Reconstruction (errors from model parameters, observations, and calibration are propagated into reconstruction).
 #' bhat <- SMITE.recon(
 #'   A = A,
-#'   x = x,
+#'   x = SMITE$x_bootstrap,
 #'   Amu = colMeans(A),
 #'   Asd = apply(A, 2, sd),
 #'   bmu = mean(b),
@@ -48,7 +47,7 @@
 #'   it = 10000
 #' )
 #'
-#' cbind(bhat, SMITE$bhat$bhat_mu)
+#' cbind(bhat, SMITE$bhat$Mu)
 
 SMITE.recon <- function(A, x, Amu, Asd, bmu, bsd,
                         res_model, res_model_type = c("gaussian", "ar1", "ar2"),
@@ -59,6 +58,7 @@ SMITE.recon <- function(A, x, Amu, Asd, bmu, bsd,
   # =============================== #
 
   A <- as.matrix(A)
+  Ae <- as.matrix(Ae)
   Amu <- as.vector(Amu)
   Asd <- as.vector(Asd)
 

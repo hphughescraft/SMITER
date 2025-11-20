@@ -17,6 +17,7 @@
 #' @return bhat - Predicted target values from in-sample blocks
 #' @return bhat_xval - predicted target values from out-of-sample blocks
 #' @return e_stats - Confidence intervals for R and RMSE (non-cross-validated and cross-validated). The size of the confidence interval is based on alpha.
+#' @importFrom stats sd cor.test quantile na.omit acf filter rnorm
 #' @export
 #' @examples
 #' # Load data from Hughes et al. (2024)
@@ -69,8 +70,8 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000,
   }
 
   if(is.null(xval)) {
-    print("No window size for cross-validation (xval) specified. Using minimum window size of 1.")
-    xval <- 1
+    print("No window size for cross-validation (xval) specified. Using nrow(A) / 5.")
+    xval <- ceiling(nrow(A) / 5)
   }
 
   if(xval <= 0) {

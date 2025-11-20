@@ -1,2 +1,13 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^docs$
+^reference$
+^deps$
+^pkgdown\.yml$
+^_pkgdown\.yml$^README\.html$
+^.*\.woff$
+^sitemap\.xml$
+^CODE_OF_CONDUCT\.html$
+^CODE_OF_CONDUCT\.md$
+^README\.Rmd$
+^link\.svg$

@@ -62,13 +62,11 @@ be <- rep(0.02, length(b))
 # Execute SMITE Calibration with no truncation (i.e., all information retained).
 SMITE <- SMITE.calib(A = A, b = b, Ae = Ae, be = be, eigenclean = ncol(A))
 
-# Call bootstrap distribution SMITE model parameters
-x <- SMITE$x$x_bootstrap
 
-# Reconstruction (should be nearly identical to SMITE$bhat$bhat_mu, only minor differences due to bootstrapping)
+# Reconstruction (errors from model parameters, observations, and calibration are propagated into reconstruction).
 bhat <- SMITE.recon(
   A = A,
-  x = x,
+  x = SMITE$x_bootstrap,
   Amu = colMeans(A),
   Asd = apply(A, 2, sd),
   bmu = mean(b),
@@ -79,5 +77,5 @@ bhat <- SMITE.recon(
   it = 10000
 )
 
-cbind(bhat, SMITE$bhat$bhat_mu)
+cbind(bhat, SMITE$bhat$Mu)
 }
