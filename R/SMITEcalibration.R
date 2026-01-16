@@ -9,7 +9,7 @@
 #' @param eigenclean Describes how (if at all) the singular values should be truncated to 'clean' the inverse solution. If the value is between 0 and 1, it will remove singular values based on the cumulative variance explained. If the value is greater than 1, it will return that many singular values (from the highest order).
 #' @param alpha The significance level for the confidence interval (i.e., 0.05 = 95-percent confidence).
 #' @param xval Cross-validation window size.
-#' @param weights TRUE or FALSE on whether you want to incorporate uncertainty (Ae and be) into calibration. Default is TRUE.
+#' @param weights TRUE or FALSE on whether you want to incorporate uncertainty (Ae and be) into calibration via an iterative Jacobian reweighting loop. Default is TRUE.
 #' @return S - Confidence intervals on the singular values of the forward matrix,
 #' @return x - Summary of SMITE model parameters, or loadings, for each column of the forward matrix.
 #' @return x_bootstrap - Individual bootstrap iterations of SMITE model parameters, needed for propagating uncertainty in predictions.
@@ -39,7 +39,8 @@
 
 
 SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000,
-                        eigenclean = NULL, alpha = 0.05, xval = NULL, weights = TRUE) {
+                        eigenclean = NULL, alpha = 0.05, xval = NULL,
+                        weights = TRUE, itj = 25, tol = 1e-8) {
 
 
   # =============================== #
@@ -196,57 +197,75 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000,
 
     x <- V %*% diag(1/S) %*% t(U) %*% bpx
 
+    # =============================== #
+    # Iterative Jacobian Reweighting
+    # =============================== #
+
     if(weights) {
 
-      # Compute row-wise total variance: be_i + sum(x_j^2 * Ae_ij)
-      tvar <- rep(0, nrow(Apx))
-      for (i in 1:nrow(Apx)) {
-        Avar <- sum((x^2) * (Aepx[i,]^2))  # variance contribution from A
-        tvar[i] <- bepx[i]^2 + Avar     # total variance per row (b + A)
+      # Store original x
+      x_og <- x
+
+      for(j in 1:itj) {
+
+        # Residual variance per row from Jacobian geometry
+        # Var(r_i) = (be_i)^2 + x' * Sigma_Ai * x
+
+        # x' * Sigma_Ai * x = sum_
+        x2 <- as.numeric(x)^2
+        Avar <- rowSums(sweep(Aepx^2, 2, x2, `*`))
+        tvar <- as.numeric(bepx)^2 + Avar
+
+        # Guard against zeroes and negatives
+        tvar[tvar <= 0] <- min(tvar[tvar >0], na.rm = TRUE)
+
+        # Row whitening
+        W <- diag(sqrt(1 / tvar))
+
+        # Weighted SVD
+        Apxw <- W %*% Apx
+        bpxw <- W %*% bpx
+
+        G <- svd(Apxw)
+        U <- G$u
+        V <- G$v
+        S <- G$d
+
+        # Regularization
+        if (is.null(eigenclean)) {
+          eigenclean <- ncol(A)
+        }
+
+        if (eigenclean > 0 & eigenclean <= 1) {
+
+          p <- which((cumsum(S^2) / sum(S^2)) < eigenclean)
+          S <- S[p]
+          U <- U[, p, drop = FALSE]
+          V <- V[, p, drop = FALSE]
+
+        } else if (eigenclean > 1) {
+
+          p <- eigenclean
+          S <- S[1:p]
+          U <- U[, 1:p, drop = FALSE]
+          V <- V[, 1:p, drop = FALSE]
+
+        }
+
+        # Updated x
+        x_j <- V %*% diag(1 / S) %*% t(U) %*% bpxw
+
+        # Convergence check (relative)
+        denom <- max(1e-12, sqrt(sum(x_og^2)))
+        if (sqrt(sum((x_j - x_og)^2)) / denom < tol) {
+          x <- x_j
+          break
+        }
+
+        x_og <- x_j
+        x <- x_j
+
       }
-
-      # Weight matrix: inverse of total variance
-      W <- diag(sqrt(1 / tvar))  # sqrt(W) for premultiplication
-
-
-      # =============================== #
-      # Weighted: SVD of Ap
-      # =============================== #
-      Apxw <- W %*% Apx
-      bpxw <- W %*% bpx
-
-      G <- svd(Apxw)
-
-      U <- G$u
-      V <- G$v
-      S <- G$d
-
-      # =============================== #
-      # Weighted: Eigenclean
-      # =============================== #
-      if(is.null(eigenclean)) {
-        eigenclean <- ncol(A)
-      }
-
-      if(eigenclean > 0 & eigenclean <= 1) { # Cumulative Variance Explained
-        p <- which((cumsum(S^2)/sum(S^2)) < eigenclean)
-        S <- S[p]
-        U <- U[,p]
-        V <- V[,p]
-      } else if(eigenclean > 1) { # Number of singular values returned
-        p <- eigenclean
-        S <- S[1:p]
-        U <- U[,1:p]
-        V <- V[,1:p]
-      }
-
-      # =============================== #
-      # Weighted: Moore-Penrose Pseudoinverse
-      # =============================== #
-
-      x <- V %*% diag(1/S) %*% t(U) %*% bpxw
-
-
     }
 
     bhat <- c((Apx %*% x))

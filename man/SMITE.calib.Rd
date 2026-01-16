@@ -13,7 +13,9 @@ SMITE.calib(
   eigenclean = NULL,
   alpha = 0.05,
   xval = NULL,
-  weights = TRUE
+  weights = TRUE,
+  itj = 25,
+  tol = 1e-08
 )
 }
 \arguments{
@@ -33,7 +35,7 @@ SMITE.calib(
 
 \item{xval}{Cross-validation window size.}
 
-\item{weights}{TRUE or FALSE on whether you want to incorporate uncertainty (Ae and be) into calibration. Default is TRUE.}
+\item{weights}{TRUE or FALSE on whether you want to incorporate uncertainty (Ae and be) into calibration via an iterative Jacobian reweighting loop. Default is TRUE.}
 }
 \value{
 S - Confidence intervals on the singular values of the forward matrix,
