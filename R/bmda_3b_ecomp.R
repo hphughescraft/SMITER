@@ -19,4 +19,4 @@
 #' }
 #'
 #' @source Hughes et al., (2024)
-"bmda_3b_comp"
+"bmda_3b_ecomp"

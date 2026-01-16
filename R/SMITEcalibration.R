@@ -10,6 +10,8 @@
 #' @param alpha The significance level for the confidence interval (i.e., 0.05 = 95-percent confidence).
 #' @param xval Cross-validation window size.
 #' @param weights TRUE or FALSE on whether you want to incorporate uncertainty (Ae and be) into calibration via an iterative Jacobian reweighting loop. Default is TRUE.
+#' @param itj The number of iterations for the Jacobian reweighting. Default is 25.
+#' @param tol The tolerance for the iterative Jacobian reweighting. Default is 1e-8.
 #' @return S - Confidence intervals on the singular values of the forward matrix,
 #' @return x - Summary of SMITE model parameters, or loadings, for each column of the forward matrix.
 #' @return x_bootstrap - Individual bootstrap iterations of SMITE model parameters, needed for propagating uncertainty in predictions.

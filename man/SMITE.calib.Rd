@@ -36,6 +36,10 @@ SMITE.calib(
 \item{xval}{Cross-validation window size.}
 
 \item{weights}{TRUE or FALSE on whether you want to incorporate uncertainty (Ae and be) into calibration via an iterative Jacobian reweighting loop. Default is TRUE.}
+
+\item{itj}{The number of iterations for the Jacobian reweighting. Default is 25.}
+
+\item{tol}{The tolerance for the iterative Jacobian reweighting. Default is 1e-8.}
 }
 \value{
 S - Confidence intervals on the singular values of the forward matrix,
