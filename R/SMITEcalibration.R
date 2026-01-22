@@ -203,6 +203,14 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000,
     # Iterative Jacobian Reweighting
     # =============================== #
 
+    # Setup constants
+    # Predictor-error correlation
+    r_A <- cov2cor(cov(Aepx))
+
+    # Cross-covariance between Ae and be
+    rho_Aebe <- apply(Aepx, 2, function(x) cor(x, bepx))
+    rho_Aebe <- ifelse(is.na(rho_Aebe), 0, rho_Aebe) # Guard against NAs
+
     if(weights) {
 
       # Store original x
@@ -210,19 +218,51 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000,
 
       for(j in 1:itj) {
 
-        # Residual variance per row from Jacobian geometry
-        # Var(r_i) = (be_i)^2 + x' * Sigma_Ai * x
+        # Compute bhat from transient x
+        bhat_itj <- Apx %*% x
 
-        # x' * Sigma_Ai * x = sum_
-        x2 <- as.numeric(x)^2
-        Avar <- rowSums(sweep(Aepx^2, 2, x2, `*`))
-        tvar <- as.numeric(bepx)^2 + Avar
+        # Compute orthogonal distance
+        r <- (bhat_itj - bpx) / sqrt(2)
 
-        # Guard against zeroes and negatives
-        tvar[tvar <= 0] <- min(tvar[tvar >0], na.rm = TRUE)
+        # =============================== #
+        # Orthogonal residual uncertainty
+        # =============================== #
 
-        # Row whitening
-        W <- diag(sqrt(1 / tvar))
+        n <- nrow(Apx)
+        p <- ncol(Apx)
+
+        xv <- as.numeric(x)
+        be_sig <- as.numeric(bepx)
+
+        rperp_var <- numeric(n)
+
+        for (i in seq_len(n)) {
+
+          # Ae for ith observation
+          Di <- as.numeric(Aepx[i, ])
+
+          # Map Ae to b-space
+          v <- Di * xv
+
+          # Covariance of Ae mapped to b-space
+          var_dbhat <- as.numeric(t(v) %*% r_A %*% v)
+
+          # Variance of be
+          var_db <- be_sig[i]^2
+
+          # Cross-covariance term: x^T c_i
+          cov_dbhat_db <- sum(xv * (rho_Aebe * Di * be_sig[i]))
+
+          # Orthogonal residual variance
+          rperp_var[i] <- 0.5 * (var_dbhat + var_db - 2 * cov_dbhat_db)
+        }
+
+        # Numerical guard
+        rperp_var[rperp_var <= 0] <- min(rperp_var[rperp_var > 0], na.rm = TRUE)
+
+        # Weights
+        w <- 1 / sqrt(rperp_var)
+        W <- diag(w)
 
         # Weighted SVD
         Apxw <- W %*% Apx
