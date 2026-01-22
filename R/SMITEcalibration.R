@@ -204,12 +204,30 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000,
     # =============================== #
 
     # Setup constants
+    # Identify columns of Ae with non-zero variance
+    Ae_var <- apply(Aepx, 2, var, na.rm = TRUE)
+    valid_Ae <- Ae_var > 0
+
+
     # Predictor-error correlation
-    r_A <- cov2cor(cov(Aepx))
+    r_A <- diag(ncol(Aepx))
+
+    if (sum(valid_Ae) > 1) {
+      r_sub <- cov2cor(cov(Aepx[, valid_Ae, drop = FALSE]))
+      r_A[valid_Ae, valid_Ae] <- r_sub
+    }
+
 
     # Cross-covariance between Ae and be
-    rho_Aebe <- apply(Aepx, 2, function(x) cor(x, bepx))
-    rho_Aebe <- ifelse(is.na(rho_Aebe), 0, rho_Aebe) # Guard against NAs
+    rho_Aebe <- rep(0, ncol(Aepx))
+
+    if (sd(bepx, na.rm = TRUE) > 0) {
+      rho_tmp <- apply(Aepx[, valid_Ae, drop = FALSE], 2,
+                       function(x) cor(x, bepx))
+      rho_tmp[is.na(rho_tmp)] <- 0
+      rho_Aebe[valid_Ae] <- rho_tmp
+    }
+
 
     if(weights) {
 
@@ -258,7 +276,14 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000,
         }
 
         # Numerical guard
-        rperp_var[rperp_var <= 0] <- min(rperp_var[rperp_var > 0], na.rm = TRUE)
+        eps <- 1e-12
+        good <- is.finite(rperp_var) & rperp_var > eps
+
+        if (!any(good)) {
+          rperp_var[] <- eps
+        } else {
+          rperp_var[!good] <- min(rperp_var[good])
+        }
 
         # Weights
         w <- 1 / sqrt(rperp_var)
