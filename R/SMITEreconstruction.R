@@ -2,6 +2,7 @@
 #'
 #' Use a model (x) created by SMITE.calib() to estimate the reconstruction target (b) based on the 'forward' coral variable matrix (A).
 #' @param A The 'forward' coral variable matrix (t x p; time in rows, coral parameters in columns).
+#' @param Ae A matrix of the same dimensions as A giving the standard errors (or standard deviations) of each proxy observation in the reconstruction dataset. Used to propagate proxy measurement uncertainty into the reconstruction.
 #' @param x A matrix of individual bootstrapped SMITE model parameters (p x it), ideally created from the 'x_bootstrap' SMITE.calib() function.
 #' @param Amu A vector of length p giving the mean values of each coral variable in the calibration dataset.
 #' @param Asd A vector of length p giving the standard deviations of each coral variable in the calibration dataset.
@@ -36,6 +37,7 @@
 #' # Reconstruction (errors from model parameters, observations, and calibration are propagated into reconstruction).
 #' bhat <- SMITE.recon(
 #'   A = A,
+#'   Ae = Ae,
 #'   x = SMITE$x_bootstrap,
 #'   Amu = colMeans(A),
 #'   Asd = apply(A, 2, sd),
@@ -49,7 +51,7 @@
 #'
 #' cbind(bhat, SMITE$bhat$Mu)
 
-SMITE.recon <- function(A, x, Amu, Asd, bmu, bsd,
+SMITE.recon <- function(A, Ae, x, Amu, Asd, bmu, bsd,
                         res_model, res_model_type = c("gaussian", "ar1", "ar2"),
                         it = 10000, alpha = 0.05) {
 
@@ -70,6 +72,10 @@ SMITE.recon <- function(A, x, Amu, Asd, bmu, bsd,
   # =============================== #
   # Flags
   # =============================== #
+
+  if(!identical(dim(Ae), dim(A))) {
+    stop("Ae must have the same dimensions as A (t x p).")
+  }
 
   if(ncol(A) != length(Amu)) {
     stop("The means of the forward matrix from the calibration dataset (Au) must be the same length as the number of columns in the forward matrix (A).")

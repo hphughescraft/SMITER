@@ -6,6 +6,7 @@
 \usage{
 SMITE.recon(
   A,
+  Ae,
   x,
   Amu,
   Asd,
@@ -19,6 +20,8 @@ SMITE.recon(
 }
 \arguments{
 \item{A}{The 'forward' coral variable matrix (t x p; time in rows, coral parameters in columns).}
+
+\item{Ae}{A matrix of the same dimensions as A giving the standard errors (or standard deviations) of each proxy observation in the reconstruction dataset. Used to propagate proxy measurement uncertainty into the reconstruction.}
 
 \item{x}{A matrix of individual bootstrapped SMITE model parameters (p x it), ideally created from the 'x_bootstrap' SMITE.calib() function.}
 
@@ -66,6 +69,7 @@ SMITE <- SMITE.calib(A = A, b = b, Ae = Ae, be = be, eigenclean = ncol(A))
 # Reconstruction (errors from model parameters, observations, and calibration are propagated into reconstruction).
 bhat <- SMITE.recon(
   A = A,
+  Ae = Ae,
   x = SMITE$x_bootstrap,
   Amu = colMeans(A),
   Asd = apply(A, 2, sd),
