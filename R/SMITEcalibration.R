@@ -375,7 +375,9 @@ SMITE.calib <- function(A, b, Ae = NULL, be = NULL, it = 10000,
   # =============================== #
 
   S_mat <- matrix(NA, nrow = length(S), ncol = it)
-  x_mat <- matrix(NA, nrow = nrow(x), ncol = it)
+  x_mat <- matrix(NA, nrow = nrow(x), ncol = it,
+                  dimnames = list(colnames(A),
+                                  1:it))
   bhat_mat <- matrix(NA, nrow = length(b), ncol = it)
   bhat_xval_mat <- matrix(NA, nrow = length(b), ncol = it)
   res_mat <- matrix(NA, nrow = length(b), ncol = it)
